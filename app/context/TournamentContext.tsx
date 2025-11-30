@@ -50,6 +50,7 @@ interface TournamentContextType {
   resetTournament: () => Promise<void>;
   setTournamentName: (name: string) => Promise<void>;
   updateSettings: (settings: Partial<TournamentSettings>) => Promise<void>;
+  loadTournamentById: (id: string) => Promise<void>;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -92,16 +93,37 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
 
-      // Get the most recent active tournament
+      // Get all tournaments ordered by most recent
       const { data: tournaments, error: tournamentError } = await supabase
         .from("tournaments")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .order("created_at", { ascending: false });
 
       if (tournamentError) throw tournamentError;
 
-      let currentTournament = tournaments?.[0];
+      let currentTournament = null;
+
+      // If we have tournaments, find the best one to load
+      if (tournaments && tournaments.length > 0) {
+        // First, check if any tournament has players (prefer tournaments with data)
+        for (const tournament of tournaments) {
+          const { count } = await supabase
+            .from("players")
+            .select("*", { count: "exact", head: true })
+            .eq("tournament_id", tournament.id);
+          
+          if (count && count > 0) {
+            // Found a tournament with players - use this one
+            currentTournament = tournament;
+            break;
+          }
+        }
+
+        // If no tournament has players, use the most recent one
+        if (!currentTournament) {
+          currentTournament = tournaments[0];
+        }
+      }
 
       // If no tournament exists, create one
       if (!currentTournament) {
@@ -519,6 +541,96 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loadTournamentById = useCallback(async (tournamentId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get the specific tournament
+      const { data: tournamentData, error: tournamentError } = await supabase
+        .from("tournaments")
+        .select("*")
+        .eq("id", tournamentId)
+        .single();
+
+      if (tournamentError) throw tournamentError;
+
+      // Load players for this tournament
+      const { data: players, error: playersError } = await supabase
+        .from("players")
+        .select("*")
+        .eq("tournament_id", tournamentId)
+        .order("seed", { ascending: true });
+
+      if (playersError) throw playersError;
+
+      // Load matches for this tournament
+      const { data: matches, error: matchesError } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", tournamentId)
+        .order("round", { ascending: true })
+        .order("match_number", { ascending: true });
+
+      if (matchesError) throw matchesError;
+
+      // Find champion player if exists
+      let champion: Player | null = null;
+      if (tournamentData.champion_id) {
+        champion = players?.find((p: { id: string }) => p.id === tournamentData.champion_id) || null;
+      }
+
+      // Transform matches to include player objects
+      const playerMap = new Map(players?.map((p: { id: string; name: string; seed: number }) => [p.id, { id: p.id, name: p.name, seed: p.seed }]) || []);
+      
+      const transformedMatches: Match[] = (matches || []).map((m: {
+        id: string;
+        round: number;
+        match_number: number;
+        player1_id: string | null;
+        player2_id: string | null;
+        score1: number | null;
+        score2: number | null;
+        winner_id: string | null;
+        is_complete: boolean;
+      }) => ({
+        id: m.id,
+        round: m.round,
+        matchNumber: m.match_number,
+        player1: m.player1_id ? playerMap.get(m.player1_id) || null : null,
+        player2: m.player2_id ? playerMap.get(m.player2_id) || null : null,
+        score1: m.score1,
+        score2: m.score2,
+        winner: m.winner_id ? playerMap.get(m.winner_id) || null : null,
+        isComplete: m.is_complete,
+      }));
+
+      // Parse settings from tournament data
+      const settings: TournamentSettings = {
+        scoreLimit: tournamentData.score_limit ?? DEFAULT_SETTINGS.scoreLimit,
+        winByTwo: tournamentData.win_by_two ?? DEFAULT_SETTINGS.winByTwo,
+        gameTimerMinutes: tournamentData.game_timer_minutes ?? DEFAULT_SETTINGS.gameTimerMinutes,
+      };
+
+      setTournament({
+        id: tournamentData.id,
+        name: tournamentData.name,
+        players: players?.map((p: { id: string; name: string; seed: number }) => ({ id: p.id, name: p.name, seed: p.seed })) || [],
+        matches: transformedMatches,
+        rounds: tournamentData.rounds || 0,
+        isStarted: tournamentData.is_started,
+        isComplete: tournamentData.is_complete,
+        champion,
+        settings,
+      });
+    } catch (err) {
+      console.error("Error loading tournament:", err);
+      setError(err instanceof Error ? err.message : "Failed to load tournament");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return (
     <TournamentContext.Provider
       value={{
@@ -532,6 +644,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         resetTournament,
         setTournamentName,
         updateSettings,
+        loadTournamentById,
       }}
     >
       {children}

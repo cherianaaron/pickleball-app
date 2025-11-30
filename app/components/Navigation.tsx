@@ -10,6 +10,7 @@ export default function Navigation() {
     { href: "/", label: "Home", icon: "🏠" },
     { href: "/players", label: "Players", icon: "👥" },
     { href: "/bracket", label: "Bracket", icon: "🏆" },
+    { href: "/history", label: "History", icon: "📜" },
     { href: "/settings", label: "Settings", icon: "⚙️" },
   ];
 
