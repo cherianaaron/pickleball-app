@@ -43,6 +43,8 @@ interface TournamentContextType {
   tournament: Tournament | null;
   loading: boolean;
   error: string | null;
+  showWinnerCelebration: boolean;
+  dismissWinnerCelebration: () => void;
   addPlayer: (name: string) => Promise<void>;
   removePlayer: (id: string) => Promise<void>;
   generateBracket: () => Promise<void>;
@@ -82,6 +84,11 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWinnerCelebration, setShowWinnerCelebration] = useState(false);
+
+  const dismissWinnerCelebration = useCallback(() => {
+    setShowWinnerCelebration(false);
+  }, []);
 
   // Load or create tournament on mount
   useEffect(() => {
@@ -493,6 +500,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
           .from("tournaments")
           .update({ is_complete: true, champion_id: winner.id })
           .eq("id", tournament.id);
+        
+        // Show the winner celebration since tournament just completed
+        setShowWinnerCelebration(true);
       }
 
       // Reload tournament to get fresh data
@@ -637,6 +647,8 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         tournament,
         loading,
         error,
+        showWinnerCelebration,
+        dismissWinnerCelebration,
         addPlayer,
         removePlayer,
         generateBracket,

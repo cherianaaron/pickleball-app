@@ -1,26 +1,21 @@
 "use client";
 
-import { useState } from "react";
 import { useTournament } from "../context/TournamentContext";
 import Link from "next/link";
 
 export default function WinnerDisplay() {
-  const { tournament, resetTournament } = useTournament();
-  const [dismissed, setDismissed] = useState(false);
+  const { tournament, resetTournament, showWinnerCelebration, dismissWinnerCelebration } = useTournament();
 
-  if (!tournament?.isComplete || !tournament.champion || dismissed) {
+  // Only show if tournament just completed in this session
+  if (!showWinnerCelebration || !tournament?.isComplete || !tournament.champion) {
     return null;
   }
-
-  const handleDismiss = () => {
-    setDismissed(true);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
       {/* Close button */}
       <button
-        onClick={handleDismiss}
+        onClick={dismissWinnerCelebration}
         className="absolute top-6 right-6 z-20 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm text-white/60 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all text-2xl"
         aria-label="Close"
       >
@@ -97,27 +92,30 @@ export default function WinnerDisplay() {
         <div className="flex flex-wrap items-center justify-center gap-4 animate-in slide-in-from-bottom duration-500 delay-700">
           <Link
             href="/"
-            onClick={handleDismiss}
+            onClick={dismissWinnerCelebration}
             className="px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 transition-all"
           >
             🏠 Home
           </Link>
           <Link
             href="/bracket"
-            onClick={handleDismiss}
+            onClick={dismissWinnerCelebration}
             className="px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 transition-all"
           >
             📊 View Bracket
           </Link>
           <Link
             href="/history"
-            onClick={handleDismiss}
+            onClick={dismissWinnerCelebration}
             className="px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 transition-all"
           >
             📜 History
           </Link>
           <button
-            onClick={resetTournament}
+            onClick={() => {
+              dismissWinnerCelebration();
+              resetTournament();
+            }}
             className="px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
           >
             🆕 New Tournament

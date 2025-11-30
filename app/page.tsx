@@ -40,8 +40,8 @@ export default function Home() {
           <div className="text-center mb-16">
             {/* Floating pickleball */}
             <div className="inline-block mb-8 animate-float">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center shadow-2xl shadow-lime-400/30 animate-pulse-glow">
-                <span className="text-6xl">🥒</span>
+              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center shadow-2xl shadow-lime-400/30 animate-pulse-glow p-4">
+                <img src="/pickleball.svg" alt="Pickleball" className="w-full h-full" />
               </div>
             </div>
 
@@ -221,7 +221,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-8 px-4 text-center text-white/30 text-sm">
-        <p>Made with 🥒 for pickleball enthusiasts</p>
+        <p>Made with 🏓 for pickleball enthusiasts</p>
       </footer>
     </div>
   );

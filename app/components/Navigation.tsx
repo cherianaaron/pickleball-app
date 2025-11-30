@@ -19,8 +19,8 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center shadow-lg shadow-lime-400/30 group-hover:shadow-lime-400/50 transition-shadow">
-              <span className="text-xl">🥒</span>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center shadow-lg shadow-lime-400/30 group-hover:shadow-lime-400/50 transition-shadow p-1.5">
+              <img src="/pickleball.svg" alt="PickleBracket" className="w-full h-full" />
             </div>
             <span className="text-xl font-black tracking-tight text-white hidden sm:inline">
               PICKLE<span className="text-lime-400">BRACKET</span>

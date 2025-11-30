@@ -134,20 +134,24 @@ export default function SettingsPage() {
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors"
-          >
-            ← Back to Home
-          </Link>
-          <div className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
-              <span className="text-3xl">⚙️</span>
-            </div>
+        <div className="mb-12">
+          <div className="mb-6">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors"
+            >
+              ← Back to Home
+            </Link>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Settings</h1>
-          <p className="text-white/50">Configure your tournament rules</p>
+          <div className="text-center">
+            <div className="inline-block mb-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
+                <span className="text-3xl">⚙️</span>
+              </div>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-2">Settings</h1>
+            <p className="text-white/50">Configure your tournament rules</p>
+          </div>
         </div>
 
         {/* Warning if tournament started */}
@@ -434,7 +438,7 @@ export default function SettingsPage() {
           {/* App Info */}
           <div className="text-center text-white/30 text-sm">
             <p>PickleBracket v1.0</p>
-            <p className="mt-1">Made with 🥒 for pickleball enthusiasts</p>
+            <p className="mt-1">Made with 🏓 for pickleball enthusiasts</p>
           </div>
         </div>
       </div>
