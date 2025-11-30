@@ -6,7 +6,6 @@ import { useTournament } from "../context/TournamentContext";
 import { supabase } from "../lib/supabase";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
-import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const SCORE_OPTIONS = [5, 7, 9, 11, 15, 21];
 const TIMER_OPTIONS = [

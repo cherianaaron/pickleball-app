@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { TournamentProvider } from "./context/TournamentContext";
 import Navigation from "./components/Navigation";
@@ -39,6 +40,7 @@ export default function RootLayout({
           </main>
           <WinnerDisplay />
         </TournamentProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
