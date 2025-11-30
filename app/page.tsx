@@ -2,9 +2,27 @@
 
 import Link from "next/link";
 import { useTournament } from "./context/TournamentContext";
+import LoadingSpinner from "./components/LoadingSpinner";
+import ErrorMessage from "./components/ErrorMessage";
 
 export default function Home() {
-  const { tournament, generateBracket, resetTournament } = useTournament();
+  const { tournament, loading, error, generateBracket, resetTournament } = useTournament();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Loading tournament..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <ErrorMessage message={error} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
 
   const canStartTournament = tournament && tournament.players.length >= 2 && !tournament.isStarted;
   const tournamentInProgress = tournament?.isStarted && !tournament.isComplete;
@@ -52,6 +70,12 @@ export default function Home() {
                       🏆 Start Tournament
                     </button>
                   )}
+                  <Link
+                    href="/settings"
+                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
+                  >
+                    ⚙️ Settings
+                  </Link>
                 </>
               ) : (
                 <>

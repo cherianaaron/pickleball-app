@@ -2,10 +2,28 @@
 
 import Link from "next/link";
 import Bracket from "../components/Bracket";
+import LoadingSpinner from "../components/LoadingSpinner";
+import ErrorMessage from "../components/ErrorMessage";
 import { useTournament } from "../context/TournamentContext";
 
 export default function BracketPage() {
-  const { tournament, resetTournament } = useTournament();
+  const { tournament, loading, error, resetTournament } = useTournament();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Loading bracket..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <ErrorMessage message={error} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">

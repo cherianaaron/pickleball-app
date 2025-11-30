@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Match, useTournament } from "../context/TournamentContext";
 
 interface ScoreEntryProps {
@@ -9,10 +9,69 @@ interface ScoreEntryProps {
 }
 
 export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
-  const { updateMatchScore } = useTournament();
+  const { tournament, updateMatchScore } = useTournament();
   const [score1, setScore1] = useState<string>("");
   const [score2, setScore2] = useState<string>("");
   const [error, setError] = useState<string>("");
+  
+  // Timer state
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [timerExpired, setTimerExpired] = useState(false);
+
+  const settings = tournament?.settings;
+  const scoreLimit = settings?.scoreLimit ?? 11;
+  const winByTwo = settings?.winByTwo ?? true;
+  const gameTimerMinutes = settings?.gameTimerMinutes;
+
+  // Initialize timer
+  useEffect(() => {
+    if (gameTimerMinutes) {
+      setTimeRemaining(gameTimerMinutes * 60);
+    }
+  }, [gameTimerMinutes]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!timerRunning || timeRemaining === null) return;
+
+    if (timeRemaining <= 0) {
+      setTimerExpired(true);
+      setTimerRunning(false);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null || prev <= 0) return prev;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerRunning, timeRemaining]);
+
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }, []);
+
+  const handleStartTimer = () => {
+    setTimerRunning(true);
+  };
+
+  const handlePauseTimer = () => {
+    setTimerRunning(false);
+  };
+
+  const handleResetTimer = () => {
+    if (gameTimerMinutes) {
+      setTimeRemaining(gameTimerMinutes * 60);
+      setTimerRunning(false);
+      setTimerExpired(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,18 +95,20 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
       return;
     }
 
-    // Standard pickleball scoring - must win by 2, games typically go to 11 or 15
     const winningScore = Math.max(s1, s2);
     const losingScore = Math.min(s1, s2);
     
-    if (winningScore < 11) {
-      setError("Winning score must be at least 11");
-      return;
-    }
+    // Only enforce score limit if timer hasn't expired
+    if (!timerExpired) {
+      if (winningScore < scoreLimit) {
+        setError(`Winning score must be at least ${scoreLimit}`);
+        return;
+      }
 
-    if (winningScore - losingScore < 2 && winningScore < 15) {
-      setError("Must win by 2 points");
-      return;
+      if (winByTwo && winningScore - losingScore < 2) {
+        setError("Must win by 2 points");
+        return;
+      }
     }
 
     updateMatchScore(match.id, s1, s2);
@@ -71,11 +132,55 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
           ✕
         </button>
 
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="text-4xl mb-2">🏓</div>
           <h2 className="text-2xl font-bold text-white">Enter Score</h2>
-          <p className="text-white/50 text-sm mt-1">Game to 11, win by 2</p>
+          <p className="text-white/50 text-sm mt-1">
+            Game to {scoreLimit}{winByTwo ? ", win by 2" : ""}
+          </p>
         </div>
+
+        {/* Timer Section */}
+        {gameTimerMinutes && (
+          <div className={`mb-6 p-4 rounded-2xl border ${timerExpired ? "bg-red-500/20 border-red-500/30" : "bg-white/5 border-white/10"}`}>
+            <div className="text-center">
+              <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Game Timer</p>
+              <p className={`text-4xl font-mono font-bold ${timerExpired ? "text-red-400" : timeRemaining && timeRemaining <= 60 ? "text-yellow-400" : "text-white"}`}>
+                {timeRemaining !== null ? formatTime(timeRemaining) : "--:--"}
+              </p>
+              {timerExpired && (
+                <p className="text-red-400 text-sm mt-2 font-medium">⏰ Time&apos;s up! Enter final scores.</p>
+              )}
+            </div>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              {!timerRunning ? (
+                <button
+                  type="button"
+                  onClick={handleStartTimer}
+                  disabled={timerExpired}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-lime-400 text-emerald-900 hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  ▶ Start
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handlePauseTimer}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-yellow-400 text-emerald-900 hover:bg-yellow-300 transition-colors"
+                >
+                  ⏸ Pause
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleResetTimer}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/10 text-white hover:bg-white/20 transition-colors"
+              >
+                ↻ Reset
+              </button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Player 1 */}
@@ -146,4 +251,3 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
     </div>
   );
 }
-

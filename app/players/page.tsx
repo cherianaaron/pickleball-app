@@ -3,10 +3,28 @@
 import Link from "next/link";
 import PlayerForm from "../components/PlayerForm";
 import PlayerList from "../components/PlayerList";
+import LoadingSpinner from "../components/LoadingSpinner";
+import ErrorMessage from "../components/ErrorMessage";
 import { useTournament } from "../context/TournamentContext";
 
 export default function PlayersPage() {
-  const { tournament, generateBracket, setTournamentName } = useTournament();
+  const { tournament, loading, error, generateBracket, setTournamentName } = useTournament();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Loading players..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <ErrorMessage message={error} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
 
   const canGenerateBracket = tournament && tournament.players.length >= 2 && !tournament.isStarted;
 

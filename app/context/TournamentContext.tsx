@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 export interface Player {
   id: string;
@@ -20,6 +21,12 @@ export interface Match {
   isComplete: boolean;
 }
 
+export interface TournamentSettings {
+  scoreLimit: number;
+  winByTwo: boolean;
+  gameTimerMinutes: number | null; // null means no timer
+}
+
 export interface Tournament {
   id: string;
   name: string;
@@ -29,23 +36,29 @@ export interface Tournament {
   isStarted: boolean;
   isComplete: boolean;
   champion: Player | null;
+  settings: TournamentSettings;
 }
 
 interface TournamentContextType {
   tournament: Tournament | null;
-  addPlayer: (name: string) => void;
-  removePlayer: (id: string) => void;
-  generateBracket: () => void;
-  updateMatchScore: (matchId: string, score1: number, score2: number) => void;
-  resetTournament: () => void;
-  setTournamentName: (name: string) => void;
+  loading: boolean;
+  error: string | null;
+  addPlayer: (name: string) => Promise<void>;
+  removePlayer: (id: string) => Promise<void>;
+  generateBracket: () => Promise<void>;
+  updateMatchScore: (matchId: string, score1: number, score2: number) => Promise<void>;
+  resetTournament: () => Promise<void>;
+  setTournamentName: (name: string) => Promise<void>;
+  updateSettings: (settings: Partial<TournamentSettings>) => Promise<void>;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
 
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
-}
+const DEFAULT_SETTINGS: TournamentSettings = {
+  scoreLimit: 11,
+  winByTwo: true,
+  gameTimerMinutes: null,
+};
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -65,79 +78,279 @@ function nextPowerOf2(n: number): number {
 }
 
 export function TournamentProvider({ children }: { children: ReactNode }) {
-  const [tournament, setTournament] = useState<Tournament>({
-    id: generateId(),
-    name: "Pickleball Championship",
-    players: [],
-    matches: [],
-    rounds: 0,
-    isStarted: false,
-    isComplete: false,
-    champion: null,
-  });
+  const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const addPlayer = useCallback((name: string) => {
-    if (!name.trim()) return;
-    
-    setTournament((prev) => ({
-      ...prev,
-      players: [
-        ...prev.players,
-        { id: generateId(), name: name.trim(), seed: prev.players.length + 1 },
-      ],
-    }));
+  // Load or create tournament on mount
+  useEffect(() => {
+    loadTournament();
   }, []);
 
-  const removePlayer = useCallback((id: string) => {
-    setTournament((prev) => ({
-      ...prev,
-      players: prev.players.filter((p) => p.id !== id),
-    }));
-  }, []);
+  const loadTournament = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const setTournamentName = useCallback((name: string) => {
-    setTournament((prev) => ({
-      ...prev,
-      name,
-    }));
-  }, []);
+      // Get the most recent active tournament
+      const { data: tournaments, error: tournamentError } = await supabase
+        .from("tournaments")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-  const generateBracket = useCallback(() => {
-    setTournament((prev) => {
-      if (prev.players.length < 2) return prev;
+      if (tournamentError) throw tournamentError;
 
-      const bracketSize = nextPowerOf2(prev.players.length);
-      const rounds = Math.log2(bracketSize);
-      const shuffledPlayers = shuffleArray(prev.players);
+      let currentTournament = tournaments?.[0];
+
+      // If no tournament exists, create one
+      if (!currentTournament) {
+        const { data: newTournament, error: createError } = await supabase
+          .from("tournaments")
+          .insert({ 
+            name: "Pickleball Championship",
+            score_limit: DEFAULT_SETTINGS.scoreLimit,
+            win_by_two: DEFAULT_SETTINGS.winByTwo,
+            game_timer_minutes: DEFAULT_SETTINGS.gameTimerMinutes,
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        currentTournament = newTournament;
+      }
+
+      // Load players for this tournament
+      const { data: players, error: playersError } = await supabase
+        .from("players")
+        .select("*")
+        .eq("tournament_id", currentTournament.id)
+        .order("seed", { ascending: true });
+
+      if (playersError) throw playersError;
+
+      // Load matches for this tournament
+      const { data: matches, error: matchesError } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", currentTournament.id)
+        .order("round", { ascending: true })
+        .order("match_number", { ascending: true });
+
+      if (matchesError) throw matchesError;
+
+      // Find champion player if exists
+      let champion: Player | null = null;
+      if (currentTournament.champion_id) {
+        champion = players?.find((p: { id: string }) => p.id === currentTournament.champion_id) || null;
+      }
+
+      // Transform matches to include player objects
+      const playerMap = new Map(players?.map((p: { id: string; name: string; seed: number }) => [p.id, { id: p.id, name: p.name, seed: p.seed }]) || []);
       
+      const transformedMatches: Match[] = (matches || []).map((m: {
+        id: string;
+        round: number;
+        match_number: number;
+        player1_id: string | null;
+        player2_id: string | null;
+        score1: number | null;
+        score2: number | null;
+        winner_id: string | null;
+        is_complete: boolean;
+      }) => ({
+        id: m.id,
+        round: m.round,
+        matchNumber: m.match_number,
+        player1: m.player1_id ? playerMap.get(m.player1_id) || null : null,
+        player2: m.player2_id ? playerMap.get(m.player2_id) || null : null,
+        score1: m.score1,
+        score2: m.score2,
+        winner: m.winner_id ? playerMap.get(m.winner_id) || null : null,
+        isComplete: m.is_complete,
+      }));
+
+      // Parse settings from tournament data
+      const settings: TournamentSettings = {
+        scoreLimit: currentTournament.score_limit ?? DEFAULT_SETTINGS.scoreLimit,
+        winByTwo: currentTournament.win_by_two ?? DEFAULT_SETTINGS.winByTwo,
+        gameTimerMinutes: currentTournament.game_timer_minutes ?? DEFAULT_SETTINGS.gameTimerMinutes,
+      };
+
+      setTournament({
+        id: currentTournament.id,
+        name: currentTournament.name,
+        players: players?.map((p: { id: string; name: string; seed: number }) => ({ id: p.id, name: p.name, seed: p.seed })) || [],
+        matches: transformedMatches,
+        rounds: currentTournament.rounds || 0,
+        isStarted: currentTournament.is_started,
+        isComplete: currentTournament.is_complete,
+        champion,
+        settings,
+      });
+    } catch (err) {
+      console.error("Error loading tournament:", err);
+      setError(err instanceof Error ? err.message : "Failed to load tournament");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addPlayer = useCallback(async (name: string) => {
+    if (!name.trim() || !tournament) return;
+
+    try {
+      setError(null);
+      const newSeed = tournament.players.length + 1;
+
+      const { data: newPlayer, error: insertError } = await supabase
+        .from("players")
+        .insert({
+          tournament_id: tournament.id,
+          name: name.trim(),
+          seed: newSeed,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      setTournament((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          players: [...prev.players, { id: newPlayer.id, name: newPlayer.name, seed: newPlayer.seed }],
+        };
+      });
+    } catch (err) {
+      console.error("Error adding player:", err);
+      setError(err instanceof Error ? err.message : "Failed to add player");
+    }
+  }, [tournament]);
+
+  const removePlayer = useCallback(async (id: string) => {
+    if (!tournament) return;
+
+    try {
+      setError(null);
+      const { error: deleteError } = await supabase
+        .from("players")
+        .delete()
+        .eq("id", id);
+
+      if (deleteError) throw deleteError;
+
+      setTournament((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          players: prev.players.filter((p) => p.id !== id),
+        };
+      });
+    } catch (err) {
+      console.error("Error removing player:", err);
+      setError(err instanceof Error ? err.message : "Failed to remove player");
+    }
+  }, [tournament]);
+
+  const setTournamentName = useCallback(async (name: string) => {
+    if (!tournament) return;
+
+    try {
+      setError(null);
+      const { error: updateError } = await supabase
+        .from("tournaments")
+        .update({ name })
+        .eq("id", tournament.id);
+
+      if (updateError) throw updateError;
+
+      setTournament((prev) => {
+        if (!prev) return prev;
+        return { ...prev, name };
+      });
+    } catch (err) {
+      console.error("Error updating tournament name:", err);
+      setError(err instanceof Error ? err.message : "Failed to update name");
+    }
+  }, [tournament]);
+
+  const updateSettings = useCallback(async (newSettings: Partial<TournamentSettings>) => {
+    if (!tournament) return;
+
+    try {
+      setError(null);
+      
+      const updatedSettings = { ...tournament.settings, ...newSettings };
+      
+      const { error: updateError } = await supabase
+        .from("tournaments")
+        .update({
+          score_limit: updatedSettings.scoreLimit,
+          win_by_two: updatedSettings.winByTwo,
+          game_timer_minutes: updatedSettings.gameTimerMinutes,
+        })
+        .eq("id", tournament.id);
+
+      if (updateError) throw updateError;
+
+      setTournament((prev) => {
+        if (!prev) return prev;
+        return { ...prev, settings: updatedSettings };
+      });
+    } catch (err) {
+      console.error("Error updating settings:", err);
+      setError(err instanceof Error ? err.message : "Failed to update settings");
+    }
+  }, [tournament]);
+
+  const generateBracket = useCallback(async () => {
+    if (!tournament || tournament.players.length < 2) return;
+
+    try {
+      setError(null);
+      const bracketSize = nextPowerOf2(tournament.players.length);
+      const rounds = Math.log2(bracketSize);
+      const shuffledPlayers = shuffleArray(tournament.players);
+      const scoreLimit = tournament.settings.scoreLimit;
+
       // Create byes for players that don't have opponents
       const playersWithByes: (Player | null)[] = [...shuffledPlayers];
       while (playersWithByes.length < bracketSize) {
         playersWithByes.push(null);
       }
 
-      const matches: Match[] = [];
+      const matchesToCreate: {
+        tournament_id: string;
+        round: number;
+        match_number: number;
+        player1_id: string | null;
+        player2_id: string | null;
+        score1: number | null;
+        score2: number | null;
+        winner_id: string | null;
+        is_complete: boolean;
+      }[] = [];
+
       let matchNumber = 0;
 
       // Generate first round matches
       for (let i = 0; i < bracketSize / 2; i++) {
         const player1 = playersWithByes[i * 2];
         const player2 = playersWithByes[i * 2 + 1];
-        
-        // Handle byes - if one player is null, the other automatically advances
         const isBye = player1 === null || player2 === null;
         const winner = isBye ? (player1 || player2) : null;
-        
-        matches.push({
-          id: generateId(),
+
+        matchesToCreate.push({
+          tournament_id: tournament.id,
           round: 1,
-          matchNumber: matchNumber++,
-          player1,
-          player2,
-          score1: isBye ? (player1 ? 11 : 0) : null,
-          score2: isBye ? (player2 ? 11 : 0) : null,
-          winner,
-          isComplete: isBye,
+          match_number: matchNumber++,
+          player1_id: player1?.id || null,
+          player2_id: player2?.id || null,
+          score1: isBye ? (player1 ? scoreLimit : 0) : null,
+          score2: isBye ? (player2 ? scoreLimit : 0) : null,
+          winner_id: winner?.id || null,
+          is_complete: isBye,
         });
       }
 
@@ -145,139 +358,180 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       for (let round = 2; round <= rounds; round++) {
         const matchesInRound = bracketSize / Math.pow(2, round);
         for (let i = 0; i < matchesInRound; i++) {
-          matches.push({
-            id: generateId(),
+          matchesToCreate.push({
+            tournament_id: tournament.id,
             round,
-            matchNumber: matchNumber++,
-            player1: null,
-            player2: null,
+            match_number: matchNumber++,
+            player1_id: null,
+            player2_id: null,
             score1: null,
             score2: null,
-            winner: null,
-            isComplete: false,
+            winner_id: null,
+            is_complete: false,
           });
         }
       }
 
+      // Insert all matches
+      const { data: insertedMatches, error: insertError } = await supabase
+        .from("matches")
+        .insert(matchesToCreate)
+        .select();
+
+      if (insertError) throw insertError;
+
       // Advance bye winners to next round
-      const advanceWinners = (matchList: Match[]) => {
-        const updatedMatches = [...matchList];
-        
-        for (let round = 1; round < rounds; round++) {
-          const currentRoundMatches = updatedMatches.filter((m) => m.round === round);
-          const nextRoundMatches = updatedMatches.filter((m) => m.round === round + 1);
+      const matchesByRound: { [key: number]: typeof insertedMatches } = {};
+      insertedMatches?.forEach((m) => {
+        if (!matchesByRound[m.round]) matchesByRound[m.round] = [];
+        matchesByRound[m.round].push(m);
+      });
 
-          currentRoundMatches.forEach((match, index) => {
-            if (match.winner) {
-              const nextMatchIndex = Math.floor(index / 2);
-              const nextMatch = nextRoundMatches[nextMatchIndex];
-              if (nextMatch) {
-                if (index % 2 === 0) {
-                  nextMatch.player1 = match.winner;
-                } else {
-                  nextMatch.player2 = match.winner;
-                }
-              }
+      // Process bye advancements
+      for (let round = 1; round < rounds; round++) {
+        const currentRoundMatches = matchesByRound[round] || [];
+        const nextRoundMatches = matchesByRound[round + 1] || [];
+
+        for (let i = 0; i < currentRoundMatches.length; i++) {
+          const match = currentRoundMatches[i];
+          if (match.winner_id) {
+            const nextMatchIndex = Math.floor(i / 2);
+            const nextMatch = nextRoundMatches[nextMatchIndex];
+            if (nextMatch) {
+              const updateField = i % 2 === 0 ? "player1_id" : "player2_id";
+              await supabase
+                .from("matches")
+                .update({ [updateField]: match.winner_id })
+                .eq("id", nextMatch.id);
             }
-          });
-        }
-
-        return updatedMatches;
-      };
-
-      const finalMatches = advanceWinners(matches);
-
-      return {
-        ...prev,
-        matches: finalMatches,
-        rounds,
-        isStarted: true,
-        isComplete: false,
-        champion: null,
-      };
-    });
-  }, []);
-
-  const updateMatchScore = useCallback((matchId: string, score1: number, score2: number) => {
-    setTournament((prev) => {
-      const matchIndex = prev.matches.findIndex((m) => m.id === matchId);
-      if (matchIndex === -1) return prev;
-
-      const match = prev.matches[matchIndex];
-      if (!match.player1 || !match.player2) return prev;
-
-      const winner = score1 > score2 ? match.player1 : match.player2;
-      const updatedMatches = [...prev.matches];
-      
-      updatedMatches[matchIndex] = {
-        ...match,
-        score1,
-        score2,
-        winner,
-        isComplete: true,
-      };
-
-      // Find and update next round match
-      const nextRoundMatches = updatedMatches.filter((m) => m.round === match.round + 1);
-      if (nextRoundMatches.length > 0) {
-        const currentRoundMatches = updatedMatches.filter((m) => m.round === match.round);
-        const matchIndexInRound = currentRoundMatches.findIndex((m) => m.id === matchId);
-        const nextMatchIndex = Math.floor(matchIndexInRound / 2);
-        const nextMatch = nextRoundMatches[nextMatchIndex];
-        
-        if (nextMatch) {
-          const nextMatchGlobalIndex = updatedMatches.findIndex((m) => m.id === nextMatch.id);
-          if (matchIndexInRound % 2 === 0) {
-            updatedMatches[nextMatchGlobalIndex] = {
-              ...updatedMatches[nextMatchGlobalIndex],
-              player1: winner,
-            };
-          } else {
-            updatedMatches[nextMatchGlobalIndex] = {
-              ...updatedMatches[nextMatchGlobalIndex],
-              player2: winner,
-            };
           }
         }
       }
 
-      // Check if tournament is complete (final match has a winner)
-      const finalMatch = updatedMatches.find((m) => m.round === prev.rounds);
-      const isComplete = finalMatch?.isComplete || false;
-      const champion = isComplete ? finalMatch?.winner || null : null;
+      // Update tournament status
+      const { error: updateError } = await supabase
+        .from("tournaments")
+        .update({ is_started: true, rounds })
+        .eq("id", tournament.id);
 
-      return {
-        ...prev,
-        matches: updatedMatches,
-        isComplete,
-        champion,
-      };
-    });
-  }, []);
+      if (updateError) throw updateError;
 
-  const resetTournament = useCallback(() => {
-    setTournament({
-      id: generateId(),
-      name: "Pickleball Championship",
-      players: [],
-      matches: [],
-      rounds: 0,
-      isStarted: false,
-      isComplete: false,
-      champion: null,
-    });
+      // Reload tournament to get fresh data
+      await loadTournament();
+    } catch (err) {
+      console.error("Error generating bracket:", err);
+      setError(err instanceof Error ? err.message : "Failed to generate bracket");
+    }
+  }, [tournament]);
+
+  const updateMatchScore = useCallback(async (matchId: string, score1: number, score2: number) => {
+    if (!tournament) return;
+
+    try {
+      setError(null);
+      const match = tournament.matches.find((m) => m.id === matchId);
+      if (!match || !match.player1 || !match.player2) return;
+
+      const winner = score1 > score2 ? match.player1 : match.player2;
+
+      // Update the match
+      const { error: updateError } = await supabase
+        .from("matches")
+        .update({
+          score1,
+          score2,
+          winner_id: winner.id,
+          is_complete: true,
+        })
+        .eq("id", matchId);
+
+      if (updateError) throw updateError;
+
+      // Find and update next round match
+      const nextRoundMatches = tournament.matches.filter((m) => m.round === match.round + 1);
+      if (nextRoundMatches.length > 0) {
+        const currentRoundMatches = tournament.matches.filter((m) => m.round === match.round);
+        const matchIndexInRound = currentRoundMatches.findIndex((m) => m.id === matchId);
+        const nextMatchIndex = Math.floor(matchIndexInRound / 2);
+        const nextMatch = nextRoundMatches[nextMatchIndex];
+
+        if (nextMatch) {
+          const updateField = matchIndexInRound % 2 === 0 ? "player1_id" : "player2_id";
+          await supabase
+            .from("matches")
+            .update({ [updateField]: winner.id })
+            .eq("id", nextMatch.id);
+        }
+      }
+
+      // Check if this was the final match
+      const isFinalMatch = match.round === tournament.rounds;
+      if (isFinalMatch) {
+        await supabase
+          .from("tournaments")
+          .update({ is_complete: true, champion_id: winner.id })
+          .eq("id", tournament.id);
+      }
+
+      // Reload tournament to get fresh data
+      await loadTournament();
+    } catch (err) {
+      console.error("Error updating match score:", err);
+      setError(err instanceof Error ? err.message : "Failed to update score");
+    }
+  }, [tournament]);
+
+  const resetTournament = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      // Create a new tournament with default settings
+      const { data: newTournament, error: createError } = await supabase
+        .from("tournaments")
+        .insert({ 
+          name: "Pickleball Championship",
+          score_limit: DEFAULT_SETTINGS.scoreLimit,
+          win_by_two: DEFAULT_SETTINGS.winByTwo,
+          game_timer_minutes: DEFAULT_SETTINGS.gameTimerMinutes,
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      setTournament({
+        id: newTournament.id,
+        name: newTournament.name,
+        players: [],
+        matches: [],
+        rounds: 0,
+        isStarted: false,
+        isComplete: false,
+        champion: null,
+        settings: DEFAULT_SETTINGS,
+      });
+    } catch (err) {
+      console.error("Error resetting tournament:", err);
+      setError(err instanceof Error ? err.message : "Failed to reset tournament");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   return (
     <TournamentContext.Provider
       value={{
         tournament,
+        loading,
+        error,
         addPlayer,
         removePlayer,
         generateBracket,
         updateMatchScore,
         resetTournament,
         setTournamentName,
+        updateSettings,
       }}
     >
       {children}
@@ -292,4 +546,3 @@ export function useTournament() {
   }
   return context;
 }
-
