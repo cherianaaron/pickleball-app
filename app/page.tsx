@@ -53,7 +53,7 @@ export default function Home() {
             </p>
 
             {/* Quick actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 flex-wrap">
               {!tournament?.isStarted ? (
                 <>
                   <Link
@@ -67,9 +67,19 @@ export default function Home() {
                       onClick={generateBracket}
                       className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
                     >
-                      🏆 Start Tournament
+                      🏆 Start Bracket
                     </button>
                   )}
+                  <button
+                    disabled
+                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-orange-500/20 backdrop-blur-sm text-orange-300 border border-orange-400/30 cursor-not-allowed transition-all duration-300 relative"
+                    title="Coming Soon - Round Robin play before bracket selection"
+                  >
+                    🔄 Round Robin
+                    <span className="absolute -top-2 -right-2 px-2 py-0.5 text-xs font-bold bg-orange-500 text-white rounded-full">
+                      Soon
+                    </span>
+                  </button>
                   <Link
                     href="/settings"
                     className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"

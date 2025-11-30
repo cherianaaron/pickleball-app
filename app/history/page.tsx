@@ -55,16 +55,51 @@ interface TournamentDetail {
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { tournament: currentTournament, loadTournamentById } = useTournament();
+  const { tournament: currentTournament, loadTournamentById, resetTournament } = useTournament();
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const handleLoadTournament = async (tournamentId: string) => {
     await loadTournamentById(tournamentId);
     router.push("/");
+  };
+
+  const handleDeleteTournament = async (tournamentId: string) => {
+    try {
+      setDeleting(true);
+
+      // If deleting the current tournament, reset first
+      if (currentTournament?.id === tournamentId) {
+        await resetTournament();
+      }
+
+      // Delete tournament (cascade will delete players and matches)
+      const { error: deleteError } = await supabase
+        .from("tournaments")
+        .delete()
+        .eq("id", tournamentId);
+
+      if (deleteError) throw deleteError;
+
+      // Clear selection if it was the deleted tournament
+      if (selectedTournament?.id === tournamentId) {
+        setSelectedTournament(null);
+      }
+
+      // Refresh the list
+      setDeleteConfirm(null);
+      await loadTournaments();
+    } catch (err) {
+      console.error("Error deleting tournament:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete tournament");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -271,44 +306,64 @@ export default function HistoryPage() {
                 </div>
               ) : (
                 tournaments.map((t) => (
-                  <button
+                  <div
                     key={t.id}
-                    onClick={() => loadTournamentDetail(t.id)}
-                    className={`w-full text-left glass rounded-2xl p-4 transition-all hover:scale-[1.02] ${
+                    className={`group relative glass rounded-2xl p-4 transition-all hover:scale-[1.02] ${
                       selectedTournament?.id === t.id
                         ? "border-2 border-lime-400 shadow-lg shadow-lime-400/20"
                         : "border border-transparent hover:border-white/20"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">{t.name}</h3>
-                        <p className="text-white/40 text-xs mt-1">{formatDate(t.createdAt)}</p>
+                    <button
+                      onClick={() => loadTournamentDetail(t.id)}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-white truncate">{t.name}</h3>
+                          <p className="text-white/40 text-xs mt-1">{formatDate(t.createdAt)}</p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {t.isComplete ? (
+                            <span className="text-2xl">🏆</span>
+                          ) : t.isStarted ? (
+                            <span className="text-2xl">⚡</span>
+                          ) : (
+                            <span className="text-2xl">📝</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-shrink-0">
-                        {t.isComplete ? (
-                          <span className="text-2xl">🏆</span>
-                        ) : t.isStarted ? (
-                          <span className="text-2xl">⚡</span>
-                        ) : (
-                          <span className="text-2xl">📝</span>
+                      <div className="flex items-center gap-3 mt-3 text-sm">
+                        <span className="text-white/60">
+                          👥 {t.playerCount}
+                        </span>
+                        <span className="text-white/60">
+                          🎮 {t.matchCount}
+                        </span>
+                        {t.championName && (
+                          <span className="text-lime-400 font-medium truncate">
+                            👑 {t.championName}
+                          </span>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 mt-3 text-sm">
-                      <span className="text-white/60">
-                        👥 {t.playerCount}
+                    </button>
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteConfirm(t.id);
+                      }}
+                      className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity text-sm"
+                      title="Delete tournament"
+                    >
+                      🗑️
+                    </button>
+                    {currentTournament?.id === t.id && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-0.5 text-xs font-bold bg-lime-400 text-emerald-900 rounded-full shadow-lg">
+                        Active
                       </span>
-                      <span className="text-white/60">
-                        🎮 {t.matchCount}
-                      </span>
-                      {t.championName && (
-                        <span className="text-lime-400 font-medium truncate">
-                          👑 {t.championName}
-                        </span>
-                      )}
-                    </div>
-                  </button>
+                    )}
+                  </div>
                 ))
               )}
             </div>
@@ -355,6 +410,12 @@ export default function HistoryPage() {
                         Load This Tournament
                       </button>
                     )}
+                    <button
+                      onClick={() => setDeleteConfirm(selectedTournament.id)}
+                      className="block w-full mt-2 px-4 py-2 rounded-xl text-sm font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors border border-red-500/30"
+                    >
+                      🗑️ Delete Tournament
+                    </button>
                   </div>
                 </div>
 
@@ -496,6 +557,46 @@ export default function HistoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="glass rounded-3xl p-6 max-w-md w-full border border-red-500/30">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">⚠️</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Delete Tournament?</h3>
+              <p className="text-white/60 mb-6">
+                This will permanently delete this tournament, including all players, matches, and scores. This action cannot be undone.
+              </p>
+              {currentTournament?.id === deleteConfirm && (
+                <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-3 mb-4">
+                  <p className="text-yellow-400 text-sm">
+                    ⚠️ This is your currently active tournament. Deleting it will create a new empty tournament.
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={deleting}
+                  className="flex-1 py-3 px-4 rounded-xl font-semibold bg-white/10 text-white hover:bg-white/20 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteTournament(deleteConfirm)}
+                  disabled={deleting}
+                  className="flex-1 py-3 px-4 rounded-xl font-bold bg-red-500 text-white hover:bg-red-400 transition-colors disabled:opacity-50"
+                >
+                  {deleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
