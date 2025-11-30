@@ -438,7 +438,7 @@ export default function SettingsPage() {
           {/* App Info */}
           <div className="text-center text-white/30 text-sm">
             <p>PickleBracket v1.0</p>
-            <p className="mt-1">Made with 🏓 for pickleball enthusiasts</p>
+            <p className="mt-1 flex items-center justify-center gap-2">Made with <img src="/pickleball.svg" alt="pickleball" className="w-5 h-5 inline-block" /> for pickleball enthusiasts</p>
           </div>
         </div>
       </div>

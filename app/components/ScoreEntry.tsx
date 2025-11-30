@@ -133,7 +133,9 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
         </button>
 
         <div className="text-center mb-6">
-          <div className="text-4xl mb-2">🏓</div>
+          <div className="w-12 h-12 mx-auto mb-2">
+            <img src="/pickleball.svg" alt="Pickleball" className="w-full h-full" />
+          </div>
           <h2 className="text-2xl font-bold text-white">Enter Score</h2>
           <p className="text-white/50 text-sm mt-1">
             Game to {scoreLimit}{winByTwo ? ", win by 2" : ""}

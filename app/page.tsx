@@ -221,7 +221,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-8 px-4 text-center text-white/30 text-sm">
-        <p>Made with 🏓 for pickleball enthusiasts</p>
+        <p className="flex items-center justify-center gap-2">Made with <img src="/pickleball.svg" alt="pickleball" className="w-5 h-5 inline-block" /> for pickleball enthusiasts</p>
       </footer>
     </div>
   );
