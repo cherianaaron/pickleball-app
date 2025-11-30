@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useTournament } from "../context/TournamentContext";
+import { supabase } from "../lib/supabase";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
@@ -16,6 +17,14 @@ const TIMER_OPTIONS = [
   { value: 30, label: "30 minutes" },
 ];
 
+const BUG_CATEGORIES = [
+  { value: "ui", label: "🎨 UI/Display Issue" },
+  { value: "functionality", label: "⚡ Feature Not Working" },
+  { value: "data", label: "💾 Data/Save Issue" },
+  { value: "performance", label: "🐌 Performance Problem" },
+  { value: "other", label: "📝 Other" },
+];
+
 export default function SettingsPage() {
   const { tournament, loading, error, updateSettings } = useTournament();
   const [scoreLimit, setScoreLimit] = useState(11);
@@ -23,6 +32,16 @@ export default function SettingsPage() {
   const [gameTimer, setGameTimer] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Bug report state
+  const [showBugForm, setShowBugForm] = useState(false);
+  const [bugCategory, setBugCategory] = useState("functionality");
+  const [bugTitle, setBugTitle] = useState("");
+  const [bugDescription, setBugDescription] = useState("");
+  const [bugEmail, setBugEmail] = useState("");
+  const [submittingBug, setSubmittingBug] = useState(false);
+  const [bugSubmitted, setBugSubmitted] = useState(false);
+  const [bugError, setBugError] = useState<string | null>(null);
 
   useEffect(() => {
     if (tournament?.settings) {
@@ -43,6 +62,54 @@ export default function SettingsPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleSubmitBug = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBugError(null);
+
+    if (!bugTitle.trim()) {
+      setBugError("Please enter a title for the bug report");
+      return;
+    }
+
+    if (!bugDescription.trim()) {
+      setBugError("Please describe the bug");
+      return;
+    }
+
+    setSubmittingBug(true);
+
+    try {
+      const { error: insertError } = await supabase
+        .from("bug_reports")
+        .insert({
+          category: bugCategory,
+          title: bugTitle.trim(),
+          description: bugDescription.trim(),
+          email: bugEmail.trim() || null,
+          user_agent: navigator.userAgent,
+          url: window.location.href,
+        });
+
+      if (insertError) throw insertError;
+
+      setBugSubmitted(true);
+      setBugTitle("");
+      setBugDescription("");
+      setBugEmail("");
+      setBugCategory("functionality");
+
+      setTimeout(() => {
+        setBugSubmitted(false);
+        setShowBugForm(false);
+      }, 3000);
+    } catch (err) {
+      console.error("Error submitting bug report:", err);
+      setBugError("Failed to submit bug report. Please try again.");
+    } finally {
+      setSubmittingBug(false);
+    }
   };
 
   if (loading) {
@@ -227,9 +294,150 @@ export default function SettingsPage() {
           >
             {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Settings"}
           </button>
+
+          {/* Divider */}
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-transparent px-4 text-white/30 text-sm">Support</span>
+            </div>
+          </div>
+
+          {/* Bug Report Section */}
+          <div className="glass rounded-3xl p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-red-400/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">🐛</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-white">Report a Bug</h3>
+                <p className="text-white/50 text-sm">Help us improve by reporting issues</p>
+              </div>
+            </div>
+
+            {!showBugForm ? (
+              <button
+                onClick={() => setShowBugForm(true)}
+                className="w-full py-3 px-4 rounded-xl font-medium bg-white/10 text-white hover:bg-white/20 transition-all flex items-center justify-center gap-2"
+              >
+                <span>📝</span> Submit Bug Report
+              </button>
+            ) : (
+              <form onSubmit={handleSubmitBug} className="space-y-4">
+                {/* Category */}
+                <div>
+                  <label className="block text-white/60 text-sm font-medium mb-2">
+                    Category
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {BUG_CATEGORIES.map((cat) => (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => setBugCategory(cat.value)}
+                        className={`
+                          py-2 px-3 rounded-xl text-sm font-medium transition-all
+                          ${bugCategory === cat.value
+                            ? "bg-red-400 text-white shadow-lg"
+                            : "bg-white/10 text-white/70 hover:bg-white/20"
+                          }
+                        `}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="block text-white/60 text-sm font-medium mb-2">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={bugTitle}
+                    onChange={(e) => setBugTitle(e.target.value)}
+                    placeholder="Brief description of the issue..."
+                    className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-red-400 transition-colors"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-white/60 text-sm font-medium mb-2">
+                    Description *
+                  </label>
+                  <textarea
+                    value={bugDescription}
+                    onChange={(e) => setBugDescription(e.target.value)}
+                    placeholder="What happened? What did you expect to happen? Steps to reproduce..."
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-red-400 transition-colors resize-none"
+                  />
+                </div>
+
+                {/* Email (optional) */}
+                <div>
+                  <label className="block text-white/60 text-sm font-medium mb-2">
+                    Email (optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={bugEmail}
+                    onChange={(e) => setBugEmail(e.target.value)}
+                    placeholder="your@email.com - for follow-up questions"
+                    className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-red-400 transition-colors"
+                  />
+                </div>
+
+                {/* Error */}
+                {bugError && (
+                  <div className="bg-red-500/20 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
+                    {bugError}
+                  </div>
+                )}
+
+                {/* Success */}
+                {bugSubmitted && (
+                  <div className="bg-green-500/20 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm flex items-center gap-2">
+                    <span>✓</span> Bug report submitted successfully! Thank you for your feedback.
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowBugForm(false);
+                      setBugError(null);
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl font-medium bg-white/10 text-white hover:bg-white/20 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingBug || bugSubmitted}
+                    className="flex-1 py-3 px-4 rounded-xl font-bold bg-red-500 text-white hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {submittingBug ? "Submitting..." : bugSubmitted ? "✓ Submitted!" : "Submit Report"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* App Info */}
+          <div className="text-center text-white/30 text-sm">
+            <p>PickleBracket v1.0</p>
+            <p className="mt-1">Made with 🥒 for pickleball enthusiasts</p>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
