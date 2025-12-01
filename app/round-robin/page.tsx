@@ -1040,6 +1040,60 @@ export default function RoundRobinPage() {
             </div>
           </div>
         )}
+
+        {/* Phase: Playoffs */}
+        {phase === "playoffs" && (
+          <div className="space-y-6">
+            <div className="glass rounded-3xl p-8 text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6">
+                <span className="text-4xl">🏆</span>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Playoffs Started!</h2>
+              <p className="text-white/60 mb-8">
+                The round robin pool play is complete. The playoff bracket has been created.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link
+                  href="/bracket"
+                  className="px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg"
+                >
+                  🏆 View Playoff Bracket
+                </Link>
+                <button
+                  onClick={resetTournament}
+                  disabled={saving}
+                  className="px-8 py-4 rounded-2xl text-lg font-semibold bg-orange-500/20 text-orange-300 border border-orange-400/30 hover:bg-orange-500/30 transition-colors"
+                >
+                  🔄 Start New Round Robin
+                </button>
+              </div>
+            </div>
+
+            {/* Tournament Summary */}
+            <div className="glass rounded-3xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Tournament Summary</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-white">{teams.length}</p>
+                  <p className="text-white/50 text-sm">Teams</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-white">{pools.length}</p>
+                  <p className="text-white/50 text-sm">Pools</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-white">{totalMatches}</p>
+                  <p className="text-white/50 text-sm">Pool Matches</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-lime-400">6</p>
+                  <p className="text-white/50 text-sm">Playoff Teams</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
