@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Match, useTournament } from "../context/TournamentContext";
 
 interface ScoreEntryProps {
@@ -115,16 +116,19 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  // Use portal to render modal at document body level to escape stacking contexts
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 z-[9999] bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-gradient-to-br from-emerald-900 to-teal-900 rounded-3xl p-8 max-w-md w-full border border-lime-400/20 shadow-2xl shadow-lime-400/10 animate-in fade-in zoom-in duration-300">
+      <div className="relative z-[10000] bg-gradient-to-br from-emerald-900 to-teal-900 rounded-3xl p-8 max-w-md w-full border border-lime-400/20 shadow-2xl shadow-lime-400/10 animate-in fade-in zoom-in duration-300">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all"
@@ -250,6 +254,7 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

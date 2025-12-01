@@ -90,6 +90,92 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     setShowWinnerCelebration(false);
   }, []);
 
+  // Helper function to reload current tournament data
+  const reloadCurrentTournament = async (tournamentId: string) => {
+    try {
+      // Load players for this tournament
+      const { data: players, error: playersError } = await supabase
+        .from("players")
+        .select("*")
+        .eq("tournament_id", tournamentId)
+        .order("seed", { ascending: true });
+
+      if (playersError) throw playersError;
+
+      // Load matches for this tournament
+      const { data: matches, error: matchesError } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", tournamentId)
+        .order("round", { ascending: true })
+        .order("match_number", { ascending: true });
+
+      if (matchesError) throw matchesError;
+
+      // Load tournament data
+      const { data: tournamentData, error: tournamentError } = await supabase
+        .from("tournaments")
+        .select("*")
+        .eq("id", tournamentId)
+        .single();
+
+      if (tournamentError) throw tournamentError;
+
+      // Find champion player if exists
+      let champion: Player | null = null;
+      if (tournamentData.champion_id) {
+        champion = players?.find((p: { id: string }) => p.id === tournamentData.champion_id) || null;
+      }
+
+      // Transform matches to include player objects
+      const playerMap = new Map(players?.map((p: { id: string; name: string; seed: number }) => [p.id, { id: p.id, name: p.name, seed: p.seed }]) || []);
+      
+      const transformedMatches: Match[] = (matches || []).map((m: {
+        id: string;
+        round: number;
+        match_number: number;
+        player1_id: string | null;
+        player2_id: string | null;
+        score1: number | null;
+        score2: number | null;
+        winner_id: string | null;
+        is_complete: boolean;
+      }) => ({
+        id: m.id,
+        round: m.round,
+        matchNumber: m.match_number,
+        player1: m.player1_id ? playerMap.get(m.player1_id) || null : null,
+        player2: m.player2_id ? playerMap.get(m.player2_id) || null : null,
+        score1: m.score1,
+        score2: m.score2,
+        winner: m.winner_id ? playerMap.get(m.winner_id) || null : null,
+        isComplete: m.is_complete,
+      }));
+
+      // Parse settings from tournament data
+      const settings: TournamentSettings = {
+        scoreLimit: tournamentData.score_limit ?? DEFAULT_SETTINGS.scoreLimit,
+        winByTwo: tournamentData.win_by_two ?? DEFAULT_SETTINGS.winByTwo,
+        gameTimerMinutes: tournamentData.game_timer_minutes ?? DEFAULT_SETTINGS.gameTimerMinutes,
+      };
+
+      setTournament({
+        id: tournamentData.id,
+        name: tournamentData.name,
+        players: players?.map((p: { id: string; name: string; seed: number }) => ({ id: p.id, name: p.name, seed: p.seed })) || [],
+        matches: transformedMatches,
+        rounds: tournamentData.rounds || 0,
+        isStarted: tournamentData.is_started,
+        isComplete: tournamentData.is_complete,
+        champion,
+        settings,
+      });
+    } catch (err) {
+      console.error("Error reloading tournament:", err);
+      throw err;
+    }
+  };
+
   const addPlayer = useCallback(async (name: string) => {
     if (!name.trim() || !tournament) return;
 
@@ -311,7 +397,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       if (updateError) throw updateError;
 
       // Reload tournament to get fresh data
-      await loadTournament();
+      await reloadCurrentTournament(tournament.id);
     } catch (err) {
       console.error("Error generating bracket:", err);
       setError(err instanceof Error ? err.message : "Failed to generate bracket");
@@ -371,7 +457,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       }
 
       // Reload tournament to get fresh data
-      await loadTournament();
+      await reloadCurrentTournament(tournament.id);
     } catch (err) {
       console.error("Error updating match score:", err);
       setError(err instanceof Error ? err.message : "Failed to update score");
