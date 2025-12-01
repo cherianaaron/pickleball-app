@@ -56,7 +56,7 @@ type Phase = "setup" | "pool-play" | "rankings" | "playoffs";
 export default function RoundRobinPage() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("setup");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start false - no auto-loading
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -81,30 +81,22 @@ export default function RoundRobinPage() {
   // Tournament ID for persistence
   const [tournamentId, setTournamentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadExistingTournament();
-  }, []);
+  // No auto-loading - always start fresh on setup phase
+  // Users can load existing tournaments from History page
 
-  const loadExistingTournament = async () => {
+  const loadTournamentById = async (id: string) => {
     try {
       setLoading(true);
       
-      // Check for existing round robin tournament
-      const { data: tournaments, error: fetchError } = await supabase
+      const { data: tournament, error: fetchError } = await supabase
         .from("round_robin_tournaments")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .eq("id", id)
+        .single();
       
-      if (fetchError) {
-        // Table might not exist yet
-        console.log("No round robin table yet");
-        setLoading(false);
-        return;
-      }
+      if (fetchError) throw fetchError;
       
-      if (tournaments && tournaments.length > 0) {
-        const tournament = tournaments[0];
+      if (tournament) {
         setTournamentId(tournament.id);
         setTournamentName(tournament.name);
         setScoreLimit(tournament.score_limit || 11);
@@ -179,6 +171,7 @@ export default function RoundRobinPage() {
       }
     } catch (err) {
       console.error("Error loading tournament:", err);
+      setError(err instanceof Error ? err.message : "Failed to load tournament");
     } finally {
       setLoading(false);
     }

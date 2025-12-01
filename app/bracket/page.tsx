@@ -25,6 +25,39 @@ export default function BracketPage() {
     );
   }
 
+  // No active tournament - prompt user to create one
+  if (!tournament) {
+    return (
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="glass rounded-3xl p-8 sm:p-12">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6">
+              <span className="text-4xl">🏆</span>
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-4">No Active Bracket Tournament</h1>
+            <p className="text-white/60 mb-8">
+              Start a new bracket-style tournament or load an existing one from history.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={resetTournament}
+                className="px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+              >
+                ➕ Create New Tournament
+              </button>
+              <Link
+                href="/history"
+                className="px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 transition-all duration-300"
+              >
+                📜 Load from History
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
