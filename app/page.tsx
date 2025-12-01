@@ -70,16 +70,12 @@ export default function Home() {
                       🏆 Start Bracket
                     </button>
                   )}
-                  <button
-                    disabled
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-orange-500/20 backdrop-blur-sm text-orange-300 border border-orange-400/30 cursor-not-allowed transition-all duration-300 relative"
-                    title="Coming Soon - Round Robin play before bracket selection"
+                  <Link
+                    href="/round-robin"
+                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg shadow-orange-400/30 hover:shadow-orange-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
                   >
                     🔄 Round Robin
-                    <span className="absolute -top-2 -right-2 px-2 py-0.5 text-xs font-bold bg-orange-500 text-white rounded-full">
-                      Soon
-                    </span>
-                  </button>
+                  </Link>
                   <Link
                     href="/settings"
                     className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
