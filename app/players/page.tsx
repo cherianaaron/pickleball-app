@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import PlayerForm from "../components/PlayerForm";
 import PlayerList from "../components/PlayerList";
@@ -9,6 +10,41 @@ import { useTournament } from "../context/TournamentContext";
 
 export default function PlayersPage() {
   const { tournament, loading, error, generateBracket, setTournamentName, resetTournament } = useTournament();
+  
+  // Local state for tournament name with debounced save
+  const [localName, setLocalName] = useState(tournament?.name || "");
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  // Sync local state when tournament changes (e.g., loading a different tournament)
+  useEffect(() => {
+    if (tournament?.name !== undefined) {
+      setLocalName(tournament.name);
+    }
+  }, [tournament?.name]);
+  
+  // Debounced save to database
+  const handleNameChange = (value: string) => {
+    setLocalName(value);
+    
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    // Set new timer to save after 500ms of no typing
+    debounceTimer.current = setTimeout(() => {
+      setTournamentName(value);
+    }, 500);
+  };
+  
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -83,8 +119,8 @@ export default function PlayersPage() {
             </label>
             <input
               type="text"
-              value={tournament?.name || ""}
-              onChange={(e) => setTournamentName(e.target.value)}
+              value={localName}
+              onChange={(e) => handleNameChange(e.target.value)}
               placeholder="Enter tournament name..."
               className="w-full px-5 py-4 rounded-2xl text-lg font-medium bg-white/10 backdrop-blur-sm border-2 border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-lime-400 focus:bg-white/15 transition-all duration-300"
             />
