@@ -613,25 +613,27 @@ export default function RoundRobinPage() {
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="mb-8">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors"
           >
             ← Back to Home
           </Link>
-          <div className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30">
-              <span className="text-3xl">🔄</span>
+          <div className="text-center">
+            <div className="inline-block mb-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30">
+                <span className="text-3xl">🔄</span>
+              </div>
             </div>
+            <h1 className="text-4xl font-bold text-white mb-2">Round Robin</h1>
+            <p className="text-white/50">
+              {phase === "setup" && "Set up your teams and pools"}
+              {phase === "pool-play" && `Pool Play - ${completedMatches}/${totalMatches} matches complete`}
+              {phase === "rankings" && "Final Rankings - Select playoff teams"}
+              {phase === "playoffs" && "Playoffs"}
+            </p>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Round Robin</h1>
-          <p className="text-white/50">
-            {phase === "setup" && "Set up your teams and pools"}
-            {phase === "pool-play" && `Pool Play - ${completedMatches}/${totalMatches} matches complete`}
-            {phase === "rankings" && "Final Rankings - Select playoff teams"}
-            {phase === "playoffs" && "Playoffs"}
-          </p>
         </div>
 
         {/* Error Display */}
