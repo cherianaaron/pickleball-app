@@ -300,14 +300,45 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       setError(null);
       const bracketSize = nextPowerOf2(tournament.players.length);
       const rounds = Math.log2(bracketSize);
-      const shuffledPlayers = shuffleArray(tournament.players);
       const scoreLimit = tournament.settings.scoreLimit;
 
-      // Create byes for players that don't have opponents
-      const playersWithByes: (Player | null)[] = [...shuffledPlayers];
-      while (playersWithByes.length < bracketSize) {
-        playersWithByes.push(null);
-      }
+      // Sort players by seed (assumes seed is already assigned based on ranking)
+      // If players have seeds, use them; otherwise use array order as seed
+      const seededPlayers = [...tournament.players].sort((a, b) => {
+        const seedA = a.seed ?? Infinity;
+        const seedB = b.seed ?? Infinity;
+        return seedA - seedB;
+      });
+
+      // Generate proper bracket seeding positions
+      // For a bracket of size N, this creates the standard seeding where:
+      // - Seed 1 plays Seed N (or bye)
+      // - Seed 2 plays Seed N-1 (or bye)
+      // - etc.
+      // This ensures top seeds get byes and face lower seeds in early rounds
+      const generateBracketPositions = (size: number): number[] => {
+        if (size === 2) return [1, 2];
+        
+        const positions: number[] = [];
+        const halfSize = size / 2;
+        const upperHalf = generateBracketPositions(halfSize);
+        
+        for (const pos of upperHalf) {
+          positions.push(pos);
+          positions.push(size + 1 - pos);
+        }
+        
+        return positions;
+      };
+
+      const bracketPositions = generateBracketPositions(bracketSize);
+      
+      // Map seed positions to players (null for byes)
+      const positionedPlayers: (Player | null)[] = bracketPositions.map(seedPos => {
+        // seedPos is 1-indexed
+        const playerIndex = seedPos - 1;
+        return playerIndex < seededPlayers.length ? seededPlayers[playerIndex] : null;
+      });
 
       const matchesToCreate: {
         tournament_id: string;
@@ -323,10 +354,10 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
       let matchNumber = 0;
 
-      // Generate first round matches
+      // Generate first round matches with proper seeding
       for (let i = 0; i < bracketSize / 2; i++) {
-        const player1 = playersWithByes[i * 2];
-        const player2 = playersWithByes[i * 2 + 1];
+        const player1 = positionedPlayers[i * 2];
+        const player2 = positionedPlayers[i * 2 + 1];
         const isBye = player1 === null || player2 === null;
         const winner = isBye ? (player1 || player2) : null;
 
