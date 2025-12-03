@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
@@ -63,6 +63,9 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Ref for detail section to scroll to on mobile
+  const detailSectionRef = useRef<HTMLDivElement>(null);
 
   const handleLoadTournament = async (tournamentId: string) => {
     await loadTournamentById(tournamentId);
@@ -234,6 +237,13 @@ export default function HistoryPage() {
         players: players?.map(p => ({ id: p.id, name: p.name, seed: p.seed })) || [],
         matches: transformedMatches,
       });
+      
+      // Scroll to detail section on mobile (screen width < 1024px which is lg breakpoint)
+      if (window.innerWidth < 1024 && detailSectionRef.current) {
+        setTimeout(() => {
+          detailSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }
     } catch (err) {
       console.error("Error loading tournament detail:", err);
       setError(err instanceof Error ? err.message : "Failed to load tournament");
@@ -370,7 +380,7 @@ export default function HistoryPage() {
           </div>
 
           {/* Tournament Detail */}
-          <div className="lg:col-span-2">
+          <div ref={detailSectionRef} className="lg:col-span-2">
             {detailLoading ? (
               <div className="glass rounded-3xl p-8 flex items-center justify-center min-h-[400px]">
                 <LoadingSpinner message="Loading details..." />

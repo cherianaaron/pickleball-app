@@ -114,21 +114,8 @@ export default function ScoreEntry({ match: initialMatch, onClose }: ScoreEntryP
       return;
     }
 
-    const winningScore = Math.max(s1, s2);
-    const losingScore = Math.min(s1, s2);
-    
-    // Only enforce score limit if timer hasn't expired
-    if (!timerExpired) {
-      if (winningScore < scoreLimit) {
-        setError(`Winning score must be at least ${scoreLimit}`);
-        return;
-      }
-
-      if (winByTwo && winningScore - losingScore < 2) {
-        setError("Must win by 2 points");
-        return;
-      }
-    }
+    // No score limit validation - games can end early due to time constraints
+    // The winner is simply whoever has the higher score
 
     // Reset the timer when submitting score
     if (match.timerStartedAt || match.timerPausedRemaining) {
@@ -164,10 +151,13 @@ export default function ScoreEntry({ match: initialMatch, onClose }: ScoreEntryP
             <img src="/pickleball.svg" alt="Pickleball" className="w-full h-full" />
           </div>
           <h2 className="text-2xl font-bold text-white">
-            {isEditing ? "Edit Score" : "Enter Score"}
+            {isEditing ? "Edit Score" : "Enter Final Score"}
           </h2>
           <p className="text-white/50 text-sm mt-1">
-            Game to {scoreLimit}{winByTwo ? ", win by 2" : ""}
+            Target: {scoreLimit} pts{winByTwo ? ", win by 2" : ""}
+          </p>
+          <p className="text-lime-400/70 text-xs mt-1">
+            ✓ Enter any score - games can end early due to time
           </p>
           {isEditing && (
             <p className="text-yellow-400/80 text-xs mt-2">
@@ -287,7 +277,7 @@ export default function ScoreEntry({ match: initialMatch, onClose }: ScoreEntryP
             type="submit"
             className="w-full py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
           >
-            {isEditing ? "Update Score" : "Submit Score"}
+            {isEditing ? "Update Score" : "✓ Complete Game"}
           </button>
         </form>
       </div>
