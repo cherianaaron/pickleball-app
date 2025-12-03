@@ -19,6 +19,8 @@ export interface Match {
   score2: number | null;
   winner: Player | null;
   isComplete: boolean;
+  timerStartedAt: string | null; // ISO timestamp when timer was started
+  timerPausedRemaining: number | null; // Seconds remaining when paused
 }
 
 export interface TournamentSettings {
@@ -53,6 +55,9 @@ interface TournamentContextType {
   setTournamentName: (name: string) => Promise<void>;
   updateSettings: (settings: Partial<TournamentSettings>) => Promise<void>;
   loadTournamentById: (id: string) => Promise<void>;
+  startMatchTimer: (matchId: string) => Promise<void>;
+  pauseMatchTimer: (matchId: string) => Promise<void>;
+  resetMatchTimer: (matchId: string) => Promise<void>;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -140,6 +145,8 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score2: number | null;
         winner_id: string | null;
         is_complete: boolean;
+        timer_started_at: string | null;
+        timer_paused_remaining: number | null;
       }) => ({
         id: m.id,
         round: m.round,
@@ -150,6 +157,8 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score2: m.score2,
         winner: m.winner_id ? playerMap.get(m.winner_id) || null : null,
         isComplete: m.is_complete,
+        timerStartedAt: m.timer_started_at,
+        timerPausedRemaining: m.timer_paused_remaining,
       }));
 
       // Parse settings from tournament data
@@ -502,6 +511,118 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const startMatchTimer = useCallback(async (matchId: string) => {
+    if (!tournament) return;
+
+    try {
+      setError(null);
+      const match = tournament.matches.find(m => m.id === matchId);
+      const gameTimerMinutes = tournament.settings.gameTimerMinutes;
+      
+      let now: string;
+      
+      // If there's paused remaining time, calculate the start time to account for it
+      if (match?.timerPausedRemaining && gameTimerMinutes) {
+        // Calculate what the start time would have been to have this much remaining
+        const totalSeconds = gameTimerMinutes * 60;
+        const elapsedSeconds = totalSeconds - match.timerPausedRemaining;
+        const startTime = new Date(Date.now() - elapsedSeconds * 1000);
+        now = startTime.toISOString();
+      } else {
+        now = new Date().toISOString();
+      }
+      
+      const { error: updateError } = await supabase
+        .from("matches")
+        .update({ timer_started_at: now, timer_paused_remaining: null })
+        .eq("id", matchId);
+
+      if (updateError) throw updateError;
+
+      // Update local state immediately for responsiveness
+      setTournament((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          matches: prev.matches.map((m) =>
+            m.id === matchId ? { ...m, timerStartedAt: now, timerPausedRemaining: null } : m
+          ),
+        };
+      });
+    } catch (err) {
+      console.error("Error starting match timer:", err);
+      setError(err instanceof Error ? err.message : "Failed to start timer");
+    }
+  }, [tournament]);
+
+  const pauseMatchTimer = useCallback(async (matchId: string) => {
+    if (!tournament) return;
+
+    try {
+      setError(null);
+      const match = tournament.matches.find(m => m.id === matchId);
+      const gameTimerMinutes = tournament.settings.gameTimerMinutes;
+      
+      if (!match?.timerStartedAt || !gameTimerMinutes) return;
+      
+      // Calculate remaining time
+      const startTime = new Date(match.timerStartedAt).getTime();
+      const totalDuration = gameTimerMinutes * 60 * 1000;
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, Math.floor((totalDuration - elapsed) / 1000));
+      
+      const { error: updateError } = await supabase
+        .from("matches")
+        .update({ timer_started_at: null, timer_paused_remaining: remaining })
+        .eq("id", matchId);
+
+      if (updateError) throw updateError;
+
+      // Update local state immediately for responsiveness
+      setTournament((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          matches: prev.matches.map((m) =>
+            m.id === matchId ? { ...m, timerStartedAt: null, timerPausedRemaining: remaining } : m
+          ),
+        };
+      });
+    } catch (err) {
+      console.error("Error pausing match timer:", err);
+      setError(err instanceof Error ? err.message : "Failed to pause timer");
+    }
+  }, [tournament]);
+
+  const resetMatchTimer = useCallback(async (matchId: string) => {
+    if (!tournament) return;
+
+    try {
+      setError(null);
+      
+      const { error: updateError } = await supabase
+        .from("matches")
+        .update({ timer_started_at: null, timer_paused_remaining: null })
+        .eq("id", matchId);
+
+      if (updateError) throw updateError;
+
+      // Update local state immediately for responsiveness
+      setTournament((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          matches: prev.matches.map((m) =>
+            m.id === matchId ? { ...m, timerStartedAt: null, timerPausedRemaining: null } : m
+          ),
+        };
+      });
+    } catch (err) {
+      console.error("Error resetting match timer:", err);
+      setError(err instanceof Error ? err.message : "Failed to reset timer");
+    }
+  }, [tournament]);
+
   const loadTournamentById = useCallback(async (tournamentId: string) => {
     try {
       setLoading(true);
@@ -554,6 +675,8 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score2: number | null;
         winner_id: string | null;
         is_complete: boolean;
+        timer_started_at: string | null;
+        timer_paused_remaining: number | null;
       }) => ({
         id: m.id,
         round: m.round,
@@ -564,6 +687,8 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score2: m.score2,
         winner: m.winner_id ? playerMap.get(m.winner_id) || null : null,
         isComplete: m.is_complete,
+        timerStartedAt: m.timer_started_at,
+        timerPausedRemaining: m.timer_paused_remaining,
       }));
 
       // Parse settings from tournament data
@@ -608,6 +733,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         setTournamentName,
         updateSettings,
         loadTournamentById,
+        startMatchTimer,
+        pauseMatchTimer,
+        resetMatchTimer,
       }}
     >
       {children}

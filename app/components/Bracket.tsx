@@ -1,12 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTournament, Match } from "../context/TournamentContext";
 import ScoreEntry from "./ScoreEntry";
 
-function MatchCard({ match, onScoreClick }: { match: Match; onScoreClick: (match: Match) => void }) {
+// Timer display component that updates every second
+function MatchTimer({ timerStartedAt, gameTimerMinutes }: { timerStartedAt: string; gameTimerMinutes: number }) {
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+
+  const calculateTimeRemaining = useCallback(() => {
+    const startTime = new Date(timerStartedAt).getTime();
+    const totalDuration = gameTimerMinutes * 60 * 1000; // in milliseconds
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, totalDuration - elapsed);
+    return Math.floor(remaining / 1000); // convert to seconds
+  }, [timerStartedAt, gameTimerMinutes]);
+
+  useEffect(() => {
+    // Initial calculation
+    setTimeRemaining(calculateTimeRemaining());
+
+    // Update every second
+    const interval = setInterval(() => {
+      setTimeRemaining(calculateTimeRemaining());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [calculateTimeRemaining]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const isExpired = timeRemaining <= 0;
+  const isLow = timeRemaining > 0 && timeRemaining <= 60;
+
+  return (
+    <div className={`
+      absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold
+      flex items-center gap-1 shadow-lg z-10
+      ${isExpired 
+        ? "bg-red-500 text-white animate-pulse" 
+        : isLow 
+          ? "bg-yellow-400 text-emerald-900" 
+          : "bg-lime-400 text-emerald-900"}
+    `}>
+      <span className="text-xs">⏱</span>
+      <span className="font-mono">{isExpired ? "TIME!" : formatTime(timeRemaining)}</span>
+    </div>
+  );
+}
+
+// Paused timer indicator
+function PausedTimerIndicator({ remainingSeconds }: { remainingSeconds: number }) {
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-lg z-10 bg-yellow-400 text-emerald-900">
+      <span className="text-xs">⏸</span>
+      <span className="font-mono">{formatTime(remainingSeconds)}</span>
+    </div>
+  );
+}
+
+function MatchCard({ match, onScoreClick, gameTimerMinutes }: { match: Match; onScoreClick: (match: Match) => void; gameTimerMinutes: number | null }) {
   const canEnterScore = match.player1 && match.player2 && !match.isComplete;
+  const canEditScore = match.player1 && match.player2 && match.isComplete;
   const isBye = (match.player1 === null || match.player2 === null) && match.isComplete;
+  const isClickable = (canEnterScore || canEditScore) && !isBye;
+  const hasRunningTimer = match.timerStartedAt && gameTimerMinutes && !match.isComplete;
+  const hasPausedTimer = !match.timerStartedAt && match.timerPausedRemaining !== null && gameTimerMinutes && !match.isComplete;
 
   return (
     <div
@@ -14,23 +83,43 @@ function MatchCard({ match, onScoreClick }: { match: Match; onScoreClick: (match
         relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm
         rounded-xl border transition-all duration-300 min-w-[200px]
         ${match.isComplete ? "border-lime-400/50 shadow-lg shadow-lime-400/10" : "border-white/10"}
-        ${canEnterScore ? "hover:border-lime-400 cursor-pointer hover:shadow-lg hover:shadow-lime-400/20" : ""}
+        ${isClickable ? "hover:border-lime-400 cursor-pointer hover:shadow-lg hover:shadow-lime-400/20" : ""}
+        ${hasRunningTimer || hasPausedTimer ? "mt-5" : ""}
       `}
-      onClick={() => canEnterScore && onScoreClick(match)}
+      onClick={() => isClickable && onScoreClick(match)}
     >
+      {/* Timer display above the card */}
+      {hasRunningTimer && (
+        <MatchTimer timerStartedAt={match.timerStartedAt!} gameTimerMinutes={gameTimerMinutes} />
+      )}
+      
+      {/* Paused timer indicator */}
+      {hasPausedTimer && (
+        <PausedTimerIndicator remainingSeconds={match.timerPausedRemaining!} />
+      )}
+
       {/* Match header */}
       <div className="px-3 py-1.5 bg-white/5 rounded-t-xl border-b border-white/10 flex items-center justify-between">
         <span className="text-xs font-medium text-white/40">
           {match.round === 1 ? "Round 1" : match.round === 2 ? "Semifinals" : "Finals"}
         </span>
         {match.isComplete && !isBye && (
-          <span className="text-xs font-bold text-lime-400">✓ Complete</span>
+          <span className="text-xs font-bold text-lime-400 flex items-center gap-1">
+            ✓ Complete
+            <span className="text-white/40 font-normal">(click to edit)</span>
+          </span>
         )}
         {isBye && (
           <span className="text-xs font-medium text-yellow-400">BYE</span>
         )}
-        {canEnterScore && (
+        {canEnterScore && !hasRunningTimer && !hasPausedTimer && (
           <span className="text-xs font-medium text-lime-400 animate-pulse">Click to score</span>
+        )}
+        {hasRunningTimer && (
+          <span className="text-xs font-medium text-lime-400">⏱ In Progress</span>
+        )}
+        {hasPausedTimer && (
+          <span className="text-xs font-medium text-yellow-400">⏸ Paused</span>
         )}
       </div>
 
@@ -162,6 +251,7 @@ export default function Bracket() {
                     key={match.id}
                     match={match}
                     onScoreClick={setSelectedMatch}
+                    gameTimerMinutes={tournament.settings.gameTimerMinutes}
                   />
                 ))}
               </div>

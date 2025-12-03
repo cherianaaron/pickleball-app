@@ -9,72 +9,90 @@ interface ScoreEntryProps {
   onClose: () => void;
 }
 
-export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
-  const { tournament, updateMatchScore } = useTournament();
-  const [score1, setScore1] = useState<string>("");
-  const [score2, setScore2] = useState<string>("");
+export default function ScoreEntry({ match: initialMatch, onClose }: ScoreEntryProps) {
+  const { tournament, updateMatchScore, startMatchTimer, pauseMatchTimer, resetMatchTimer } = useTournament();
+  
+  // Get the current match from tournament context (so it updates when state changes)
+  const match = tournament?.matches.find(m => m.id === initialMatch.id) || initialMatch;
+  
+  // Check if we're editing an existing score
+  const isEditing = match.isComplete && match.score1 !== null && match.score2 !== null;
+  
+  // Pre-fill scores if editing
+  const [score1, setScore1] = useState<string>(isEditing ? String(match.score1) : "");
+  const [score2, setScore2] = useState<string>(isEditing ? String(match.score2) : "");
   const [error, setError] = useState<string>("");
   
-  // Timer state
-  const [timerRunning, setTimerRunning] = useState(false);
+  // Timer display state (calculated from match state)
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const [timerExpired, setTimerExpired] = useState(false);
 
   const settings = tournament?.settings;
   const scoreLimit = settings?.scoreLimit ?? 11;
   const winByTwo = settings?.winByTwo ?? true;
   const gameTimerMinutes = settings?.gameTimerMinutes;
 
-  // Initialize timer
-  useEffect(() => {
-    if (gameTimerMinutes) {
-      setTimeRemaining(gameTimerMinutes * 60);
-    }
-  }, [gameTimerMinutes]);
+  // Timer state
+  const timerRunning = !!match.timerStartedAt;
+  const timerPaused = !match.timerStartedAt && match.timerPausedRemaining !== null;
 
-  // Timer countdown
-  useEffect(() => {
-    if (!timerRunning || timeRemaining === null) return;
-
-    if (timeRemaining <= 0) {
-      setTimerExpired(true);
-      setTimerRunning(false);
-      return;
+  // Calculate time remaining based on timer state
+  const calculateTimeRemaining = useCallback(() => {
+    if (!gameTimerMinutes) return null;
+    
+    // Timer is running - calculate from start time
+    if (match.timerStartedAt) {
+      const startTime = new Date(match.timerStartedAt).getTime();
+      const totalDuration = gameTimerMinutes * 60 * 1000;
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, totalDuration - elapsed);
+      return Math.floor(remaining / 1000);
     }
+    
+    // Timer is paused - show paused remaining time
+    if (match.timerPausedRemaining !== null) {
+      return match.timerPausedRemaining;
+    }
+    
+    // Timer not started - show full time
+    return gameTimerMinutes * 60;
+  }, [match.timerStartedAt, match.timerPausedRemaining, gameTimerMinutes]);
+
+  // Update time remaining every second if timer is running
+  useEffect(() => {
+    // Initial calculation
+    setTimeRemaining(calculateTimeRemaining());
+
+    // Only set up interval if timer is running
+    if (!match.timerStartedAt) return;
 
     const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev === null || prev <= 0) return prev;
-        return prev - 1;
-      });
+      setTimeRemaining(calculateTimeRemaining());
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerRunning, timeRemaining]);
+  }, [match.timerStartedAt, match.timerPausedRemaining, calculateTimeRemaining]);
 
-  const formatTime = useCallback((seconds: number) => {
+  const timerExpired = timerRunning && timeRemaining !== null && timeRemaining <= 0;
+
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
-  }, []);
-
-  const handleStartTimer = () => {
-    setTimerRunning(true);
   };
 
-  const handlePauseTimer = () => {
-    setTimerRunning(false);
+  const handleStartTimer = async () => {
+    await startMatchTimer(match.id);
   };
 
-  const handleResetTimer = () => {
-    if (gameTimerMinutes) {
-      setTimeRemaining(gameTimerMinutes * 60);
-      setTimerRunning(false);
-      setTimerExpired(false);
-    }
+  const handlePauseTimer = async () => {
+    await pauseMatchTimer(match.id);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleResetTimer = async () => {
+    await resetMatchTimer(match.id);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -112,7 +130,12 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
       }
     }
 
-    updateMatchScore(match.id, s1, s2);
+    // Reset the timer when submitting score
+    if (match.timerStartedAt || match.timerPausedRemaining) {
+      await resetMatchTimer(match.id);
+    }
+
+    await updateMatchScore(match.id, s1, s2);
     onClose();
   };
 
@@ -140,22 +163,35 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
           <div className="w-12 h-12 mx-auto mb-2">
             <img src="/pickleball.svg" alt="Pickleball" className="w-full h-full" />
           </div>
-          <h2 className="text-2xl font-bold text-white">Enter Score</h2>
+          <h2 className="text-2xl font-bold text-white">
+            {isEditing ? "Edit Score" : "Enter Score"}
+          </h2>
           <p className="text-white/50 text-sm mt-1">
             Game to {scoreLimit}{winByTwo ? ", win by 2" : ""}
           </p>
+          {isEditing && (
+            <p className="text-yellow-400/80 text-xs mt-2">
+              ⚠️ Editing may affect subsequent match results
+            </p>
+          )}
         </div>
 
         {/* Timer Section */}
-        {gameTimerMinutes && (
-          <div className={`mb-6 p-4 rounded-2xl border ${timerExpired ? "bg-red-500/20 border-red-500/30" : "bg-white/5 border-white/10"}`}>
+        {gameTimerMinutes && !isEditing && (
+          <div className={`mb-6 p-4 rounded-2xl border ${timerExpired ? "bg-red-500/20 border-red-500/30" : timerPaused ? "bg-yellow-500/20 border-yellow-500/30" : "bg-white/5 border-white/10"}`}>
             <div className="text-center">
               <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Game Timer</p>
-              <p className={`text-4xl font-mono font-bold ${timerExpired ? "text-red-400" : timeRemaining && timeRemaining <= 60 ? "text-yellow-400" : "text-white"}`}>
+              <p className={`text-4xl font-mono font-bold ${timerExpired ? "text-red-400" : timerPaused ? "text-yellow-400" : timeRemaining !== null && timeRemaining <= 60 ? "text-yellow-400" : "text-white"}`}>
                 {timeRemaining !== null ? formatTime(timeRemaining) : "--:--"}
               </p>
               {timerExpired && (
                 <p className="text-red-400 text-sm mt-2 font-medium">⏰ Time&apos;s up! Enter final scores.</p>
+              )}
+              {timerPaused && !timerExpired && (
+                <p className="text-yellow-400 text-sm mt-2 font-medium">⏸ Paused</p>
+              )}
+              {timerRunning && !timerExpired && (
+                <p className="text-lime-400/70 text-xs mt-2">Timer continues even if you close this window</p>
               )}
             </div>
             <div className="flex items-center justify-center gap-2 mt-4">
@@ -166,13 +202,14 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
                   disabled={timerExpired}
                   className="px-4 py-2 rounded-xl text-sm font-semibold bg-lime-400 text-emerald-900 hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  ▶ Start
+                  {timerPaused ? "▶ Resume" : "▶ Start"}
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handlePauseTimer}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-yellow-400 text-emerald-900 hover:bg-yellow-300 transition-colors"
+                  disabled={timerExpired}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-yellow-400 text-emerald-900 hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   ⏸ Pause
                 </button>
@@ -250,7 +287,7 @@ export default function ScoreEntry({ match, onClose }: ScoreEntryProps) {
             type="submit"
             className="w-full py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
           >
-            Submit Score
+            {isEditing ? "Update Score" : "Submit Score"}
           </button>
         </form>
       </div>
