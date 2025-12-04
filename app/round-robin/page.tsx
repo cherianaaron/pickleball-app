@@ -73,6 +73,7 @@ export default function RoundRobinPage() {
   const [selectedMatch, setSelectedMatch] = useState<PoolMatch | null>(null);
   const [score1, setScore1] = useState("");
   const [score2, setScore2] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   
   // Rankings state
   const [standings, setStandings] = useState<TeamStanding[]>([]);
@@ -388,6 +389,7 @@ export default function RoundRobinPage() {
       setSelectedMatch(null);
       setScore1("");
       setScore2("");
+      setIsEditing(false);
       
       // Check if all matches are complete
       const updatedPools = pools.map(pool => ({
@@ -819,12 +821,22 @@ export default function RoundRobinPage() {
                   {activePoolData.matches.map(match => (
                     <div
                       key={match.id}
-                      className={`rounded-xl p-4 border ${
+                      className={`rounded-xl p-4 border cursor-pointer transition-all ${
                         match.isComplete
-                          ? "bg-green-500/10 border-green-500/30"
-                          : "bg-white/5 border-white/10 cursor-pointer hover:border-orange-500/50"
+                          ? "bg-green-500/10 border-green-500/30 hover:border-green-400/50"
+                          : "bg-white/5 border-white/10 hover:border-orange-500/50"
                       }`}
-                      onClick={() => !match.isComplete && setSelectedMatch(match)}
+                      onClick={() => {
+                        setSelectedMatch(match);
+                        setIsEditing(match.isComplete);
+                        if (match.isComplete) {
+                          setScore1(String(match.score1 ?? ""));
+                          setScore2(String(match.score2 ?? ""));
+                        } else {
+                          setScore1("");
+                          setScore2("");
+                        }
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -840,9 +852,12 @@ export default function RoundRobinPage() {
                           </div>
                         </div>
                         {match.isComplete ? (
-                          <span className="font-mono font-bold text-white">
-                            {match.score1} - {match.score2}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-white">
+                              {match.score1} - {match.score2}
+                            </span>
+                            <span className="text-green-400/60 text-xs">✎ Edit</span>
+                          </div>
                         ) : (
                           <span className="text-orange-400 text-sm">Click to enter score</span>
                         )}
@@ -876,8 +891,13 @@ export default function RoundRobinPage() {
             {selectedMatch && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                 <div className="glass rounded-3xl p-6 max-w-md w-full">
-                  <h3 className="text-xl font-bold text-white mb-4 text-center">Enter Score</h3>
-                  <p className="text-white/60 text-center mb-6">Game to {scoreLimit}</p>
+                  <h3 className="text-xl font-bold text-white mb-2 text-center">
+                    {isEditing ? "Edit Score" : "Enter Score"}
+                  </h3>
+                  <p className="text-white/60 text-center mb-1">Game to {scoreLimit}</p>
+                  <p className="text-lime-400/70 text-xs text-center mb-6">
+                    ✓ Enter any score - games can end early due to time
+                  </p>
                   
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div>
@@ -912,6 +932,7 @@ export default function RoundRobinPage() {
                         setSelectedMatch(null);
                         setScore1("");
                         setScore2("");
+                        setIsEditing(false);
                       }}
                       className="flex-1 py-3 rounded-xl font-semibold bg-white/10 text-white"
                     >
@@ -922,7 +943,7 @@ export default function RoundRobinPage() {
                       disabled={score1 === "" || score2 === "" || saving}
                       className="flex-1 py-3 rounded-xl font-bold bg-orange-500 text-white disabled:opacity-50"
                     >
-                      {saving ? "Saving..." : "Save Score"}
+                      {saving ? "Saving..." : isEditing ? "Update Score" : "✓ Complete Game"}
                     </button>
                   </div>
                 </div>
