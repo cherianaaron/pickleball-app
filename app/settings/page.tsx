@@ -26,12 +26,15 @@ const BUG_CATEGORIES = [
 ];
 
 export default function SettingsPage() {
-  const { tournament, loading, error, updateSettings } = useTournament();
+  const { tournament, loading, error, updateSettings, getUserSettingsPreference, saveUserSettingsPreference } = useTournament();
+  
+  // Initialize with defaults (will be updated from localStorage/tournament on mount)
   const [scoreLimit, setScoreLimit] = useState(11);
   const [winByTwo, setWinByTwo] = useState(true);
   const [gameTimer, setGameTimer] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Bug report state
   const [showBugForm, setShowBugForm] = useState(false);
@@ -43,22 +46,40 @@ export default function SettingsPage() {
   const [bugSubmitted, setBugSubmitted] = useState(false);
   const [bugError, setBugError] = useState<string | null>(null);
 
+  // Load settings on mount - prioritize tournament settings, fall back to localStorage
   useEffect(() => {
     if (tournament?.settings) {
       setScoreLimit(tournament.settings.scoreLimit);
       setWinByTwo(tournament.settings.winByTwo);
       setGameTimer(tournament.settings.gameTimerMinutes);
+    } else if (!settingsLoaded) {
+      // No tournament - load from localStorage
+      const savedPrefs = getUserSettingsPreference();
+      setScoreLimit(savedPrefs.scoreLimit);
+      setWinByTwo(savedPrefs.winByTwo);
+      setGameTimer(savedPrefs.gameTimerMinutes);
     }
-  }, [tournament?.settings]);
+    setSettingsLoaded(true);
+  }, [tournament?.settings, settingsLoaded, getUserSettingsPreference]);
 
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
-    await updateSettings({
+    
+    const newSettings = {
       scoreLimit,
       winByTwo,
       gameTimerMinutes: gameTimer,
-    });
+    };
+    
+    // Always save to localStorage (for future tournaments)
+    saveUserSettingsPreference(newSettings);
+    
+    // Also save to current tournament if one exists
+    if (tournament) {
+      await updateSettings(newSettings);
+    }
+    
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

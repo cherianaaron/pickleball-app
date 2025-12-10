@@ -58,6 +58,8 @@ interface TournamentContextType {
   startMatchTimer: (matchId: string) => Promise<void>;
   pauseMatchTimer: (matchId: string) => Promise<void>;
   resetMatchTimer: (matchId: string) => Promise<void>;
+  getUserSettingsPreference: () => TournamentSettings;
+  saveUserSettingsPreference: (settings: TournamentSettings) => void;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -66,6 +68,38 @@ const DEFAULT_SETTINGS: TournamentSettings = {
   scoreLimit: 11,
   winByTwo: true,
   gameTimerMinutes: null,
+};
+
+// LocalStorage key for persisting user's preferred settings across tournaments
+const USER_SETTINGS_KEY = "picklebracket_user_settings";
+
+// Helper to get user's preferred settings from localStorage
+const getUserSettings = (): TournamentSettings => {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  try {
+    const saved = localStorage.getItem(USER_SETTINGS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        scoreLimit: parsed.scoreLimit ?? DEFAULT_SETTINGS.scoreLimit,
+        winByTwo: parsed.winByTwo ?? DEFAULT_SETTINGS.winByTwo,
+        gameTimerMinutes: parsed.gameTimerMinutes ?? DEFAULT_SETTINGS.gameTimerMinutes,
+      };
+    }
+  } catch (e) {
+    console.error("Error reading user settings:", e);
+  }
+  return DEFAULT_SETTINGS;
+};
+
+// Helper to save user's preferred settings to localStorage
+const saveUserSettings = (settings: TournamentSettings) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(USER_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error("Error saving user settings:", e);
+  }
 };
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -282,6 +316,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         .eq("id", tournament.id);
 
       if (updateError) throw updateError;
+
+      // Also save to localStorage so settings persist across new tournaments
+      saveUserSettings(updatedSettings);
 
       setTournament((prev) => {
         if (!prev) return prev;
@@ -509,14 +546,17 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       setError(null);
       setLoading(true);
 
-      // Create a new tournament with default settings
+      // Get user's saved settings (persisted across tournaments) or use defaults
+      const userSettings = getUserSettings();
+
+      // Create a new tournament with user's saved settings
       const { data: newTournament, error: createError } = await supabase
         .from("tournaments")
         .insert({ 
           name: "Pickleball Championship",
-          score_limit: DEFAULT_SETTINGS.scoreLimit,
-          win_by_two: DEFAULT_SETTINGS.winByTwo,
-          game_timer_minutes: DEFAULT_SETTINGS.gameTimerMinutes,
+          score_limit: userSettings.scoreLimit,
+          win_by_two: userSettings.winByTwo,
+          game_timer_minutes: userSettings.gameTimerMinutes,
         })
         .select()
         .single();
@@ -532,7 +572,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         isStarted: false,
         isComplete: false,
         champion: null,
-        settings: DEFAULT_SETTINGS,
+        settings: userSettings,
       });
     } catch (err) {
       console.error("Error resetting tournament:", err);
@@ -767,6 +807,8 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         startMatchTimer,
         pauseMatchTimer,
         resetMatchTimer,
+        getUserSettingsPreference: getUserSettings,
+        saveUserSettingsPreference: saveUserSettings,
       }}
     >
       {children}
