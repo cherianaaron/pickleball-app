@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS round_robin_matches (
   team1_id UUID REFERENCES round_robin_teams(id) ON DELETE CASCADE,
   team2_id UUID REFERENCES round_robin_teams(id) ON DELETE CASCADE,
   match_number INTEGER NOT NULL,
+  round INTEGER NOT NULL DEFAULT 1,
+  court INTEGER,
   score1 INTEGER,
   score2 INTEGER,
   is_complete BOOLEAN DEFAULT FALSE,
@@ -90,4 +92,15 @@ CREATE TRIGGER update_rr_matches_updated_at
   BEFORE UPDATE ON round_robin_matches
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- Migration: Add round and court columns if they don't exist
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='round_robin_matches' AND column_name='round') THEN
+    ALTER TABLE round_robin_matches ADD COLUMN round INTEGER NOT NULL DEFAULT 1;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='round_robin_matches' AND column_name='court') THEN
+    ALTER TABLE round_robin_matches ADD COLUMN court INTEGER;
+  END IF;
+END $$;
 

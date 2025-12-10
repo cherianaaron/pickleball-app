@@ -21,6 +21,8 @@ interface PoolMatch {
   score2: number | null;
   isComplete: boolean;
   matchNumber: number;
+  round: number;
+  court: number | null; // null means bye
 }
 
 interface Pool {
@@ -69,7 +71,7 @@ export default function RoundRobinPage() {
   
   // Pool play state
   const [pools, setPools] = useState<Pool[]>([]);
-  const [activePool, setActivePool] = useState<string | null>(null);
+  const [activeRound, setActiveRound] = useState<number>(1);
   const [selectedMatch, setSelectedMatch] = useState<PoolMatch | null>(null);
   const [score1, setScore1] = useState("");
   const [score2, setScore2] = useState("");
@@ -82,8 +84,8 @@ export default function RoundRobinPage() {
   // Tournament ID for persistence
   const [tournamentId, setTournamentId] = useState<string | null>(null);
 
-  // No auto-loading - always start fresh on setup phase
-  // Users can load existing tournaments from History page
+  // LocalStorage key for active round robin tournament
+  const ACTIVE_RR_KEY = "activeRoundRobinTournamentId";
 
   const loadTournamentById = async (id: string) => {
     try {
@@ -150,12 +152,14 @@ export default function RoundRobinPage() {
                 score2: m.score2,
                 isComplete: m.is_complete,
                 matchNumber: m.match_number,
+                round: m.round || 1,
+                court: m.court || null,
               })),
             });
           }
           
           setPools(loadedPools);
-          setActivePool(loadedPools[0]?.id || null);
+          setActiveRound(1);
           
           // Determine phase
           if (tournament.is_playoffs_started) {
@@ -172,11 +176,29 @@ export default function RoundRobinPage() {
       }
     } catch (err) {
       console.error("Error loading tournament:", err);
+      // If tournament not found, clear localStorage
+      localStorage.removeItem(ACTIVE_RR_KEY);
       setError(err instanceof Error ? err.message : "Failed to load tournament");
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-load active tournament on mount
+  useEffect(() => {
+    const savedTournamentId = localStorage.getItem(ACTIVE_RR_KEY);
+    if (savedTournamentId) {
+      loadTournamentById(savedTournamentId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save tournament ID to localStorage when it changes
+  useEffect(() => {
+    if (tournamentId && phase !== "setup") {
+      localStorage.setItem(ACTIVE_RR_KEY, tournamentId);
+    }
+  }, [tournamentId, phase]);
 
   const addTeam = () => {
     if (!newTeamName.trim()) return;
@@ -195,6 +217,70 @@ export default function RoundRobinPage() {
     setTeams(teams.filter(t => t.id !== teamId));
   };
 
+  // Circle method for round-robin scheduling
+  // This ensures each team plays exactly once per round
+  const generateRoundRobinSchedule = (poolTeams: Team[], poolId: string): PoolMatch[] => {
+    const n = poolTeams.length;
+    const matches: PoolMatch[] = [];
+    let matchNum = 1;
+    
+    // If odd number of teams, add a "bye" placeholder
+    const teamsWithBye = n % 2 === 1 
+      ? [...poolTeams, { id: "bye", name: "BYE", poolId } as Team]
+      : [...poolTeams];
+    
+    const teamCount = teamsWithBye.length;
+    const numRounds = teamCount - 1;
+    const matchesPerRound = teamCount / 2;
+    
+    // Circle method: fix first team, rotate the rest
+    for (let round = 0; round < numRounds; round++) {
+      const roundMatches: PoolMatch[] = [];
+      
+      for (let match = 0; match < matchesPerRound; match++) {
+        // Calculate team indices for this match using circle method
+        let team1Index: number;
+        let team2Index: number;
+        
+        if (match === 0) {
+          // First team is always fixed at position 0
+          team1Index = 0;
+          team2Index = (round % (teamCount - 1)) + 1;
+        } else {
+          // Rotate the rest
+          team1Index = ((round + match) % (teamCount - 1)) + 1;
+          team2Index = ((round + teamCount - 1 - match) % (teamCount - 1)) + 1;
+        }
+        
+        const team1 = teamsWithBye[team1Index];
+        const team2 = teamsWithBye[team2Index];
+        
+        // Skip matches involving the bye
+        if (team1.id === "bye" || team2.id === "bye") {
+          continue;
+        }
+        
+        roundMatches.push({
+          id: `match-${poolId}-${matchNum}`,
+          poolId,
+          team1,
+          team2,
+          score1: null,
+          score2: null,
+          isComplete: false,
+          matchNumber: matchNum,
+          round: round + 1,
+          court: null, // Will be assigned when interleaving
+        });
+        matchNum++;
+      }
+      
+      matches.push(...roundMatches);
+    }
+    
+    return matches;
+  };
+
   const generatePools = useCallback(() => {
     if (teams.length < 4) {
       setError("Need at least 4 teams to create pools");
@@ -204,47 +290,70 @@ export default function RoundRobinPage() {
     // Shuffle teams for random assignment
     const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
     
-    // Split into two pools as evenly as possible
-    const poolASize = Math.ceil(shuffledTeams.length / 2);
+    // Split into two pools, ensuring at most ONE pool has an odd number of teams
+    // This minimizes byes (only 1 team sits out per round max)
+    const total = shuffledTeams.length;
+    let poolASize: number;
+    
+    if (total % 2 === 0) {
+      // Even total: check if splitting evenly gives two odds
+      const half = total / 2;
+      if (half % 2 === 1) {
+        // Both halves would be odd (e.g., 10 -> 5,5), make one bigger
+        poolASize = half + 1; // e.g., 10 -> 6,4
+      } else {
+        // Both halves are even (e.g., 8 -> 4,4), split evenly
+        poolASize = half;
+      }
+    } else {
+      // Odd total: one pool will naturally be odd
+      poolASize = Math.ceil(total / 2);
+    }
+    
     const poolATeams = shuffledTeams.slice(0, poolASize);
     const poolBTeams = shuffledTeams.slice(poolASize);
     
-    // Generate round robin matches for a pool
-    const generatePoolMatches = (poolTeams: Team[], poolId: string): PoolMatch[] => {
-      const matches: PoolMatch[] = [];
-      let matchNum = 1;
+    const poolATeamsWithId = poolATeams.map(t => ({ ...t, poolId: "pool-a" }));
+    const poolBTeamsWithId = poolBTeams.map(t => ({ ...t, poolId: "pool-b" }));
+    
+    const poolAMatches = generateRoundRobinSchedule(poolATeamsWithId, "pool-a");
+    const poolBMatches = generateRoundRobinSchedule(poolBTeamsWithId, "pool-b");
+    
+    // Now assign courts by interleaving Pool A and Pool B matches per round
+    // Pool A has more teams (ceil), Pool B has fewer (floor)
+    const poolARounds = poolATeams.length % 2 === 1 ? poolATeams.length : poolATeams.length - 1;
+    const poolBRounds = poolBTeams.length % 2 === 1 ? poolBTeams.length : poolBTeams.length - 1;
+    const maxRounds = Math.max(poolARounds, poolBRounds);
+    
+    // Assign court numbers within each round
+    for (let round = 1; round <= maxRounds; round++) {
+      let courtNum = 1;
       
-      for (let i = 0; i < poolTeams.length; i++) {
-        for (let j = i + 1; j < poolTeams.length; j++) {
-          matches.push({
-            id: `match-${poolId}-${matchNum}`,
-            poolId,
-            team1: poolTeams[i],
-            team2: poolTeams[j],
-            score1: null,
-            score2: null,
-            isComplete: false,
-            matchNumber: matchNum,
-          });
-          matchNum++;
-        }
+      // Get Pool A matches for this round
+      const poolAMatchesInRound = poolAMatches.filter(m => m.round === round);
+      for (const match of poolAMatchesInRound) {
+        match.court = courtNum++;
       }
       
-      return matches;
-    };
+      // Get Pool B matches for this round  
+      const poolBMatchesInRound = poolBMatches.filter(m => m.round === round);
+      for (const match of poolBMatchesInRound) {
+        match.court = courtNum++;
+      }
+    }
     
     const poolA: Pool = {
       id: "pool-a",
       name: "Pool A",
-      teams: poolATeams.map(t => ({ ...t, poolId: "pool-a" })),
-      matches: generatePoolMatches(poolATeams.map(t => ({ ...t, poolId: "pool-a" })), "pool-a"),
+      teams: poolATeamsWithId,
+      matches: poolAMatches,
     };
     
     const poolB: Pool = {
       id: "pool-b",
       name: "Pool B",
-      teams: poolBTeams.map(t => ({ ...t, poolId: "pool-b" })),
-      matches: generatePoolMatches(poolBTeams.map(t => ({ ...t, poolId: "pool-b" })), "pool-b"),
+      teams: poolBTeamsWithId,
+      matches: poolBMatches,
     };
     
     return [poolA, poolB];
@@ -322,6 +431,8 @@ export default function RoundRobinPage() {
               team2_id: team2?.id,
               match_number: match.matchNumber,
               is_complete: false,
+              round: match.round,
+              court: match.court,
             })
             .select()
             .single();
@@ -336,7 +447,7 @@ export default function RoundRobinPage() {
       }
       
       setPools(generatedPools);
-      setActivePool(generatedPools[0].id);
+      setActiveRound(1);
       setPhase("pool-play");
     } catch (err) {
       console.error("Error starting pool play:", err);
@@ -511,6 +622,9 @@ export default function RoundRobinPage() {
         .update({ is_playoffs_started: true })
         .eq("id", tournamentId);
       
+      // Clear localStorage since we're moving to playoffs
+      localStorage.removeItem(ACTIVE_RR_KEY);
+      
       // Create a new bracket tournament with the playoff teams
       const { data: bracketTournament, error: createError } = await supabase
         .from("tournaments")
@@ -563,6 +677,9 @@ export default function RoundRobinPage() {
         await supabase.from("round_robin_tournaments").delete().eq("id", tournamentId);
       }
       
+      // Clear localStorage
+      localStorage.removeItem(ACTIVE_RR_KEY);
+      
       // Reset state
       setTournamentId(null);
       setTeams([]);
@@ -570,7 +687,7 @@ export default function RoundRobinPage() {
       setStandings([]);
       setPlayoffTeams([]);
       setPhase("setup");
-      setActivePool(null);
+      setActiveRound(1);
       setSelectedMatch(null);
     } catch (err) {
       console.error("Error resetting:", err);
@@ -607,9 +724,30 @@ export default function RoundRobinPage() {
     );
   }
 
-  const activePoolData = pools.find(p => p.id === activePool);
   const completedMatches = pools.reduce((acc, pool) => acc + pool.matches.filter(m => m.isComplete).length, 0);
   const totalMatches = pools.reduce((acc, pool) => acc + pool.matches.length, 0);
+  
+  // Calculate total rounds (max rounds across both pools)
+  const poolA = pools.find(p => p.name === "Pool A");
+  const poolB = pools.find(p => p.name === "Pool B");
+  const maxRoundPoolA = poolA ? Math.max(...poolA.matches.map(m => m.round), 0) : 0;
+  const maxRoundPoolB = poolB ? Math.max(...poolB.matches.map(m => m.round), 0) : 0;
+  const totalRounds = Math.max(maxRoundPoolA, maxRoundPoolB);
+  
+  // Get all matches for the active round (from both pools)
+  const getMatchesForRound = (round: number) => {
+    const allMatches: (PoolMatch & { poolName: string })[] = [];
+    pools.forEach(pool => {
+      pool.matches
+        .filter(m => m.round === round)
+        .forEach(m => allMatches.push({ ...m, poolName: pool.name }));
+    });
+    // Sort by court number
+    return allMatches.sort((a, b) => (a.court || 99) - (b.court || 99));
+  };
+  
+  const roundMatches = getMatchesForRound(activeRound);
+  const roundCompletedMatches = roundMatches.filter(m => m.isComplete).length;
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -741,25 +879,51 @@ export default function RoundRobinPage() {
             </div>
 
             {/* Pool Preview */}
-            {teams.length >= 4 && (
-              <div className="glass rounded-3xl p-6">
-                <h2 className="text-xl font-semibold text-white mb-4">Pool Preview</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-blue-500/20 rounded-xl p-4 border border-blue-500/30">
-                    <h3 className="font-semibold text-blue-400 mb-2">Pool A</h3>
-                    <p className="text-white/60 text-sm">
-                      {Math.ceil(teams.length / 2)} teams • {Math.ceil(teams.length / 2) * (Math.ceil(teams.length / 2) - 1) / 2} matches
-                    </p>
+            {teams.length >= 4 && (() => {
+              // Calculate pool sizes using same logic as generatePools
+              const total = teams.length;
+              let poolASize: number;
+              if (total % 2 === 0) {
+                const half = total / 2;
+                poolASize = half % 2 === 1 ? half + 1 : half;
+              } else {
+                poolASize = Math.ceil(total / 2);
+              }
+              const poolBSize = total - poolASize;
+              const poolAMatches = poolASize * (poolASize - 1) / 2;
+              const poolBMatches = poolBSize * (poolBSize - 1) / 2;
+              const poolAHasBye = poolASize % 2 === 1;
+              const poolBHasBye = poolBSize % 2 === 1;
+              
+              return (
+                <div className="glass rounded-3xl p-6">
+                  <h2 className="text-xl font-semibold text-white mb-4">Pool Preview</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-500/20 rounded-xl p-4 border border-blue-500/30">
+                      <h3 className="font-semibold text-blue-400 mb-2">Pool A</h3>
+                      <p className="text-white/60 text-sm">
+                        {poolASize} teams • {poolAMatches} matches
+                      </p>
+                      {poolAHasBye && (
+                        <p className="text-yellow-400/70 text-xs mt-1">1 bye per round</p>
+                      )}
+                    </div>
+                    <div className="bg-green-500/20 rounded-xl p-4 border border-green-500/30">
+                      <h3 className="font-semibold text-green-400 mb-2">Pool B</h3>
+                      <p className="text-white/60 text-sm">
+                        {poolBSize} teams • {poolBMatches} matches
+                      </p>
+                      {poolBHasBye && (
+                        <p className="text-yellow-400/70 text-xs mt-1">1 bye per round</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-green-500/20 rounded-xl p-4 border border-green-500/30">
-                    <h3 className="font-semibold text-green-400 mb-2">Pool B</h3>
-                    <p className="text-white/60 text-sm">
-                      {Math.floor(teams.length / 2)} teams • {Math.floor(teams.length / 2) * (Math.floor(teams.length / 2) - 1) / 2} matches
-                    </p>
-                  </div>
+                  {!poolAHasBye && !poolBHasBye && (
+                    <p className="text-lime-400/70 text-xs text-center mt-3">✓ All teams play every round - no byes!</p>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Start Button */}
             <button
@@ -775,50 +939,95 @@ export default function RoundRobinPage() {
         {/* Phase: Pool Play */}
         {phase === "pool-play" && (
           <div className="space-y-6">
-            {/* Pool Tabs */}
-            <div className="flex gap-2">
-              {pools.map(pool => {
-                const poolComplete = pool.matches.filter(m => m.isComplete).length;
-                const poolTotal = pool.matches.length;
-                return (
-                  <button
-                    key={pool.id}
-                    onClick={() => setActivePool(pool.id)}
-                    className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all ${
-                      activePool === pool.id
-                        ? "bg-orange-500 text-white"
-                        : "bg-white/10 text-white/60 hover:bg-white/20"
-                    }`}
-                  >
-                    {pool.name} ({poolComplete}/{poolTotal})
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Pool Teams */}
-            {activePoolData && (
-              <div className="glass rounded-3xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Teams in {activePoolData.name}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {activePoolData.teams.map(team => (
-                    <span
-                      key={team.id}
-                      className="px-3 py-1 rounded-full bg-white/10 text-white text-sm"
-                    >
-                      {team.name}
+            {/* Tournament Progress */}
+            <div className="glass rounded-3xl p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">{tournamentName}</h3>
+                  <p className="text-white/50 text-sm">
+                    {completedMatches}/{totalMatches} matches complete • {totalRounds} rounds
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {poolA && (
+                    <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm border border-blue-500/30">
+                      Pool A: {poolA.teams.length} teams
                     </span>
-                  ))}
+                  )}
+                  {poolB && (
+                    <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm border border-green-500/30">
+                      Pool B: {poolB.teams.length} teams
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Matches */}
-            {activePoolData && (
-              <div className="glass rounded-3xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Matches</h3>
-                <div className="space-y-3">
-                  {activePoolData.matches.map(match => (
+            {/* Round Navigation */}
+            <div className="glass rounded-3xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => setActiveRound(Math.max(1, activeRound - 1))}
+                  disabled={activeRound === 1}
+                  className="px-4 py-2 rounded-xl bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                >
+                  ← Prev
+                </button>
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-white">Round {activeRound}</h2>
+                  <p className="text-white/50 text-sm">
+                    {roundCompletedMatches}/{roundMatches.length} matches complete
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveRound(Math.min(totalRounds, activeRound + 1))}
+                  disabled={activeRound === totalRounds}
+                  className="px-4 py-2 rounded-xl bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+              
+              {/* Round Quick Nav */}
+              <div className="flex gap-2 justify-center flex-wrap">
+                {Array.from({ length: totalRounds }, (_, i) => i + 1).map(round => {
+                  const roundComplete = getMatchesForRound(round).every(m => m.isComplete);
+                  const roundHasMatches = getMatchesForRound(round).some(m => m.isComplete);
+                  return (
+                    <button
+                      key={round}
+                      onClick={() => setActiveRound(round)}
+                      className={`w-10 h-10 rounded-xl font-bold transition-all ${
+                        activeRound === round
+                          ? "bg-orange-500 text-white scale-110"
+                          : roundComplete
+                          ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                          : roundHasMatches
+                          ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                          : "bg-white/10 text-white/60 hover:bg-white/20"
+                      }`}
+                    >
+                      {round}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Round Matches - Court View */}
+            <div className="glass rounded-3xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Round {activeRound} Matches</h3>
+                <span className="text-white/50 text-sm">
+                  {roundMatches.length} match{roundMatches.length !== 1 ? "es" : ""} on {Math.max(...roundMatches.map(m => m.court || 0))} court{roundMatches.length > 1 ? "s" : ""}
+                </span>
+              </div>
+              
+              {roundMatches.length === 0 ? (
+                <p className="text-white/40 text-center py-8">No matches in this round</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {roundMatches.map(match => (
                     <div
                       key={match.id}
                       className={`rounded-xl p-4 border cursor-pointer transition-all ${
@@ -838,35 +1047,121 @@ export default function RoundRobinPage() {
                         }
                       }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <span className="text-white/40 text-sm">#{match.matchNumber}</span>
-                          <div className="flex items-center gap-2">
-                            <span className={match.isComplete && match.score1! > match.score2! ? "text-lime-400 font-bold" : "text-white"}>
-                              {match.team1.name}
-                            </span>
-                            <span className="text-white/40">vs</span>
-                            <span className={match.isComplete && match.score2! > match.score1! ? "text-lime-400 font-bold" : "text-white"}>
-                              {match.team2.name}
-                            </span>
-                          </div>
+                      {/* Court Badge & Pool */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 rounded-lg bg-orange-500/20 text-orange-400 text-xs font-bold">
+                            Court {match.court}
+                          </span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                            match.poolName === "Pool A" 
+                              ? "bg-blue-500/20 text-blue-400" 
+                              : "bg-green-500/20 text-green-400"
+                          }`}>
+                            {match.poolName}
+                          </span>
                         </div>
                         {match.isComplete ? (
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-white">
-                              {match.score1} - {match.score2}
-                            </span>
-                            <span className="text-green-400/60 text-xs">✎ Edit</span>
-                          </div>
+                          <span className="text-green-400 text-xs">✓ Complete</span>
                         ) : (
-                          <span className="text-orange-400 text-sm">Click to enter score</span>
+                          <span className="text-orange-400 text-xs">• In Progress</span>
                         )}
                       </div>
+                      
+                      {/* Teams */}
+                      <div className="space-y-2">
+                        <div className={`flex items-center justify-between p-2 rounded-lg ${
+                          match.isComplete && match.score1! > match.score2! 
+                            ? "bg-lime-400/10" 
+                            : "bg-white/5"
+                        }`}>
+                          <span className={`font-medium ${
+                            match.isComplete && match.score1! > match.score2! 
+                              ? "text-lime-400" 
+                              : "text-white"
+                          }`}>
+                            {match.team1.name}
+                          </span>
+                          {match.isComplete && (
+                            <span className={`font-mono font-bold ${
+                              match.score1! > match.score2! ? "text-lime-400" : "text-white/60"
+                            }`}>
+                              {match.score1}
+                            </span>
+                          )}
+                        </div>
+                        <div className={`flex items-center justify-between p-2 rounded-lg ${
+                          match.isComplete && match.score2! > match.score1! 
+                            ? "bg-lime-400/10" 
+                            : "bg-white/5"
+                        }`}>
+                          <span className={`font-medium ${
+                            match.isComplete && match.score2! > match.score1! 
+                              ? "text-lime-400" 
+                              : "text-white"
+                          }`}>
+                            {match.team2.name}
+                          </span>
+                          {match.isComplete && (
+                            <span className={`font-mono font-bold ${
+                              match.score2! > match.score1! ? "text-lime-400" : "text-white/60"
+                            }`}>
+                              {match.score2}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Click hint */}
+                      {!match.isComplete ? (
+                        <p className="text-orange-400/70 text-xs text-center mt-3">
+                          Tap to enter score
+                        </p>
+                      ) : (
+                        <p className="text-green-400/50 text-xs text-center mt-3">
+                          Tap to edit score
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+              
+              {/* Bye indicator */}
+              {(() => {
+                // Find teams with byes this round
+                const teamsPlayingThisRound = new Set<string>();
+                roundMatches.forEach(m => {
+                  teamsPlayingThisRound.add(m.team1.id);
+                  teamsPlayingThisRound.add(m.team2.id);
+                });
+                
+                const teamsWithByes: { team: Team; pool: string }[] = [];
+                pools.forEach(pool => {
+                  pool.teams.forEach(team => {
+                    if (!teamsPlayingThisRound.has(team.id)) {
+                      teamsWithByes.push({ team, pool: pool.name });
+                    }
+                  });
+                });
+                
+                if (teamsWithByes.length === 0) return null;
+                
+                return (
+                  <div className="mt-4 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+                    <p className="text-yellow-400 text-sm">
+                      <span className="font-semibold">Bye this round:</span>{" "}
+                      {teamsWithByes.map((t, i) => (
+                        <span key={t.team.id}>
+                          {t.team.name} <span className="text-yellow-400/50">({t.pool})</span>
+                          {i < teamsWithByes.length - 1 ? ", " : ""}
+                        </span>
+                      ))}
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-4">
@@ -874,7 +1169,7 @@ export default function RoundRobinPage() {
                 onClick={resetTournament}
                 className="px-6 py-3 rounded-xl font-semibold bg-red-500/20 text-red-400 border border-red-500/30"
               >
-                Reset Tournament
+                Reset
               </button>
               <button
                 onClick={finishPoolPlay}

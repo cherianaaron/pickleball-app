@@ -148,6 +148,8 @@ CREATE TABLE IF NOT EXISTS round_robin_matches (
   team1_id UUID REFERENCES round_robin_teams(id) ON DELETE CASCADE,
   team2_id UUID REFERENCES round_robin_teams(id) ON DELETE CASCADE,
   match_number INTEGER NOT NULL,
+  round INTEGER NOT NULL DEFAULT 1,
+  court INTEGER,
   score1 INTEGER,
   score2 INTEGER,
   is_complete BOOLEAN DEFAULT FALSE,
