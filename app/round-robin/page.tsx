@@ -323,25 +323,29 @@ export default function RoundRobinPage() {
     const poolBMatches = generateRoundRobinSchedule(poolBTeamsWithId, "pool-b");
     
     // Now assign courts by interleaving Pool A and Pool B matches per round
-    // Pool A has more teams (ceil), Pool B has fewer (floor)
+    // Respect the numCourts limit - matches beyond limit get null court (bye/waiting)
     const poolARounds = poolATeams.length % 2 === 1 ? poolATeams.length : poolATeams.length - 1;
     const poolBRounds = poolBTeams.length % 2 === 1 ? poolBTeams.length : poolBTeams.length - 1;
     const maxRounds = Math.max(poolARounds, poolBRounds);
     
-    // Assign court numbers within each round
+    // Assign court numbers within each round, respecting numCourts limit
     for (let round = 1; round <= maxRounds; round++) {
       let courtNum = 1;
       
-      // Get Pool A matches for this round
-      const poolAMatchesInRound = poolAMatches.filter(m => m.round === round);
-      for (const match of poolAMatchesInRound) {
-        match.court = courtNum++;
-      }
+      // Get all matches for this round from both pools
+      const allMatchesInRound = [
+        ...poolAMatches.filter(m => m.round === round),
+        ...poolBMatches.filter(m => m.round === round),
+      ];
       
-      // Get Pool B matches for this round  
-      const poolBMatchesInRound = poolBMatches.filter(m => m.round === round);
-      for (const match of poolBMatchesInRound) {
-        match.court = courtNum++;
+      // Assign courts up to numCourts limit
+      for (const match of allMatchesInRound) {
+        if (courtNum <= numCourts) {
+          match.court = courtNum++;
+        } else {
+          // Matches beyond court limit get null (bye/waiting for this time slot)
+          match.court = null;
+        }
       }
     }
     
@@ -903,7 +907,14 @@ export default function RoundRobinPage() {
               const poolBRounds = poolBSize % 2 === 1 ? poolBSize : poolBSize - 1;
               const matchesPerRoundA = poolASize % 2 === 1 ? (poolASize - 1) / 2 : poolASize / 2;
               const matchesPerRoundB = poolBSize % 2 === 1 ? (poolBSize - 1) / 2 : poolBSize / 2;
-              const courtsNeeded = matchesPerRoundA + matchesPerRoundB;
+              const totalMatchesPerRound = matchesPerRoundA + matchesPerRoundB;
+              
+              // Calculate byes based on court limit
+              const courtsUsed = Math.min(numCourts, totalMatchesPerRound);
+              const matchesWithBye = totalMatchesPerRound - courtsUsed; // Matches that can't play simultaneously
+              const teamsWithByePerRound = matchesWithBye * 2; // 2 teams per match that has to wait
+              const hasByeDueToOddPool = poolAHasBye || poolBHasBye;
+              const hasByeDueToCourtLimit = matchesWithBye > 0;
               
               return (
                 <div className="glass rounded-3xl p-6">
@@ -918,7 +929,7 @@ export default function RoundRobinPage() {
                         {matchesPerRoundA} matches/round • {poolAMatches} total
                       </p>
                       {poolAHasBye && (
-                        <p className="text-yellow-400/70 text-xs mt-1">1 bye per round</p>
+                        <p className="text-yellow-400/70 text-xs mt-1">1 bye per round (odd pool)</p>
                       )}
                     </div>
                     <div className="bg-green-500/20 rounded-xl p-4 border border-green-500/30">
@@ -930,16 +941,20 @@ export default function RoundRobinPage() {
                         {matchesPerRoundB} matches/round • {poolBMatches} total
                       </p>
                       {poolBHasBye && (
-                        <p className="text-yellow-400/70 text-xs mt-1">1 bye per round</p>
+                        <p className="text-yellow-400/70 text-xs mt-1">1 bye per round (odd pool)</p>
                       )}
                     </div>
                   </div>
                   <div className="bg-white/5 rounded-xl p-3 text-center">
                     <p className="text-white/70 text-sm">
-                      <span className="font-semibold text-orange-400">{courtsNeeded} courts</span> needed • 
+                      <span className="font-semibold text-orange-400">{courtsUsed} courts</span> used • 
                       <span className="font-semibold text-white"> {poolAMatches + poolBMatches} total matches</span>
                     </p>
-                    {poolAHasBye || poolBHasBye ? (
+                    {hasByeDueToCourtLimit ? (
+                      <p className="text-yellow-400/70 text-xs mt-1">
+                        ⚠️ {teamsWithByePerRound} teams wait per round ({numCourts} courts &lt; {totalMatchesPerRound} matches needed)
+                      </p>
+                    ) : hasByeDueToOddPool ? (
                       <p className="text-yellow-400/70 text-xs mt-1">
                         1 team sits out each round (bye)
                       </p>
@@ -1050,7 +1065,10 @@ export default function RoundRobinPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white">Round {activeRound} Matches</h3>
                 <span className="text-white/50 text-sm">
-                  {roundMatches.length} match{roundMatches.length !== 1 ? "es" : ""} on {Math.max(...roundMatches.map(m => m.court || 0), 0)} court{roundMatches.length > 1 ? "s" : ""}
+                  {roundMatches.filter(m => m.court).length} on courts
+                  {roundMatches.filter(m => !m.court).length > 0 && (
+                    <span className="text-yellow-400/70"> • {roundMatches.filter(m => !m.court).length} waiting</span>
+                  )}
                 </span>
               </div>
               
@@ -1081,9 +1099,15 @@ export default function RoundRobinPage() {
                       {/* Court Badge & Pool */}
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 rounded-lg bg-orange-500/20 text-orange-400 text-xs font-bold">
-                            Court {match.court}
-                          </span>
+                          {match.court ? (
+                            <span className="px-2 py-1 rounded-lg bg-orange-500/20 text-orange-400 text-xs font-bold">
+                              Court {match.court}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 rounded-lg bg-yellow-500/20 text-yellow-400 text-xs font-bold">
+                              ⏳ Waiting
+                            </span>
+                          )}
                           <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
                             match.poolName === "Pool A" 
                               ? "bg-blue-500/20 text-blue-400" 
@@ -1158,16 +1182,25 @@ export default function RoundRobinPage() {
                 </div>
               )}
               
-              {/* Bye indicator - only show for pools that have matches in this round */}
+              {/* Bye/Waiting indicator - show teams not playing or waiting for courts */}
               {(() => {
-                // Find teams with actual byes this round (not pools that are simply done)
-                const teamsPlayingThisRound = new Set<string>();
+                // Find teams playing on courts vs waiting
+                const teamsOnCourts = new Set<string>();
+                const teamsWaiting = new Set<string>();
+                
                 roundMatches.forEach(m => {
-                  teamsPlayingThisRound.add(m.team1.id);
-                  teamsPlayingThisRound.add(m.team2.id);
+                  if (m.court) {
+                    teamsOnCourts.add(m.team1.id);
+                    teamsOnCourts.add(m.team2.id);
+                  } else {
+                    teamsWaiting.add(m.team1.id);
+                    teamsWaiting.add(m.team2.id);
+                  }
                 });
                 
+                // Find teams with actual byes (not in any match this round)
                 const teamsWithByes: { team: Team; pool: string }[] = [];
+                const waitingTeams: { team: Team; pool: string }[] = [];
                 const poolsDone: string[] = [];
                 
                 pools.forEach(pool => {
@@ -1178,19 +1211,34 @@ export default function RoundRobinPage() {
                     // Pool is done with all their rounds
                     poolsDone.push(pool.name);
                   } else {
-                    // Pool has matches this round, check for byes
+                    // Pool has matches this round, check for byes and waiting
                     pool.teams.forEach(team => {
-                      if (!teamsPlayingThisRound.has(team.id)) {
+                      if (teamsWaiting.has(team.id)) {
+                        waitingTeams.push({ team, pool: pool.name });
+                      } else if (!teamsOnCourts.has(team.id)) {
                         teamsWithByes.push({ team, pool: pool.name });
                       }
                     });
                   }
                 });
                 
-                if (teamsWithByes.length === 0 && poolsDone.length === 0) return null;
+                if (teamsWithByes.length === 0 && waitingTeams.length === 0 && poolsDone.length === 0) return null;
                 
                 return (
                   <div className="mt-4 space-y-2">
+                    {waitingTeams.length > 0 && (
+                      <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/30">
+                        <p className="text-orange-400 text-sm">
+                          <span className="font-semibold">⏳ Waiting for court:</span>{" "}
+                          {waitingTeams.map((t, i) => (
+                            <span key={t.team.id}>
+                              {t.team.name} <span className="text-orange-400/50">({t.pool})</span>
+                              {i < waitingTeams.length - 1 ? ", " : ""}
+                            </span>
+                          ))}
+                        </p>
+                      </div>
+                    )}
                     {teamsWithByes.length > 0 && (
                       <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
                         <p className="text-yellow-400 text-sm">
