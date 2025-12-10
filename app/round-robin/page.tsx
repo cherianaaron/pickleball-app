@@ -290,24 +290,27 @@ export default function RoundRobinPage() {
     // Shuffle teams for random assignment
     const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
     
-    // Split into two pools, ensuring at most ONE pool has an odd number of teams
-    // This minimizes byes (only 1 team sits out per round max)
+    // Split into two pools with these priorities:
+    // 1. NO BYES when total is even (both pools must have even # of teams)
+    // 2. Only 1 bye when total is odd (one pool odd, one pool even)
+    // 3. Maximize court utilization (larger pool gets more teams)
     const total = shuffledTeams.length;
     let poolASize: number;
     
     if (total % 2 === 0) {
-      // Even total: check if splitting evenly gives two odds
+      // Even total: ensure both pools are even (NO BYES)
       const half = total / 2;
       if (half % 2 === 1) {
-        // Both halves would be odd (e.g., 10 -> 5,5), make one bigger
+        // Half is odd, so 50/50 split would give two odd pools (bad - 2 byes)
+        // Instead do (half+1)/(half-1) to get two even pools
         poolASize = half + 1; // e.g., 10 -> 6,4
       } else {
-        // Both halves are even (e.g., 8 -> 4,4), split evenly
-        poolASize = half;
+        // Half is even, 50/50 split gives two even pools (good)
+        poolASize = half; // e.g., 8 -> 4,4 or 12 -> 6,6
       }
     } else {
-      // Odd total: one pool will naturally be odd
-      poolASize = Math.ceil(total / 2);
+      // Odd total: one pool must be odd (1 bye), make it the larger pool
+      poolASize = Math.ceil(total / 2); // e.g., 11 -> 6,5 or 9 -> 5,4
     }
     
     const poolATeams = shuffledTeams.slice(0, poolASize);
@@ -883,26 +886,36 @@ export default function RoundRobinPage() {
               // Calculate pool sizes using same logic as generatePools
               const total = teams.length;
               let poolASize: number;
+              
               if (total % 2 === 0) {
                 const half = total / 2;
                 poolASize = half % 2 === 1 ? half + 1 : half;
               } else {
                 poolASize = Math.ceil(total / 2);
               }
+              
               const poolBSize = total - poolASize;
               const poolAMatches = poolASize * (poolASize - 1) / 2;
               const poolBMatches = poolBSize * (poolBSize - 1) / 2;
               const poolAHasBye = poolASize % 2 === 1;
               const poolBHasBye = poolBSize % 2 === 1;
+              const poolARounds = poolASize % 2 === 1 ? poolASize : poolASize - 1;
+              const poolBRounds = poolBSize % 2 === 1 ? poolBSize : poolBSize - 1;
+              const matchesPerRoundA = poolASize % 2 === 1 ? (poolASize - 1) / 2 : poolASize / 2;
+              const matchesPerRoundB = poolBSize % 2 === 1 ? (poolBSize - 1) / 2 : poolBSize / 2;
+              const courtsNeeded = matchesPerRoundA + matchesPerRoundB;
               
               return (
                 <div className="glass rounded-3xl p-6">
                   <h2 className="text-xl font-semibold text-white mb-4">Pool Preview</h2>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-blue-500/20 rounded-xl p-4 border border-blue-500/30">
                       <h3 className="font-semibold text-blue-400 mb-2">Pool A</h3>
                       <p className="text-white/60 text-sm">
-                        {poolASize} teams • {poolAMatches} matches
+                        {poolASize} teams • {poolARounds} rounds
+                      </p>
+                      <p className="text-white/40 text-xs">
+                        {matchesPerRoundA} matches/round • {poolAMatches} total
                       </p>
                       {poolAHasBye && (
                         <p className="text-yellow-400/70 text-xs mt-1">1 bye per round</p>
@@ -911,16 +924,34 @@ export default function RoundRobinPage() {
                     <div className="bg-green-500/20 rounded-xl p-4 border border-green-500/30">
                       <h3 className="font-semibold text-green-400 mb-2">Pool B</h3>
                       <p className="text-white/60 text-sm">
-                        {poolBSize} teams • {poolBMatches} matches
+                        {poolBSize} teams • {poolBRounds} rounds
+                      </p>
+                      <p className="text-white/40 text-xs">
+                        {matchesPerRoundB} matches/round • {poolBMatches} total
                       </p>
                       {poolBHasBye && (
                         <p className="text-yellow-400/70 text-xs mt-1">1 bye per round</p>
                       )}
                     </div>
                   </div>
-                  {!poolAHasBye && !poolBHasBye && (
-                    <p className="text-lime-400/70 text-xs text-center mt-3">✓ All teams play every round - no byes!</p>
-                  )}
+                  <div className="bg-white/5 rounded-xl p-3 text-center">
+                    <p className="text-white/70 text-sm">
+                      <span className="font-semibold text-orange-400">{courtsNeeded} courts</span> needed • 
+                      <span className="font-semibold text-white"> {poolAMatches + poolBMatches} total matches</span>
+                    </p>
+                    {poolAHasBye || poolBHasBye ? (
+                      <p className="text-yellow-400/70 text-xs mt-1">
+                        1 team sits out each round (bye)
+                      </p>
+                    ) : (
+                      <p className="text-lime-400/70 text-xs mt-1">✓ No byes - all teams play every round!</p>
+                    )}
+                    {poolARounds !== poolBRounds && (
+                      <p className="text-white/50 text-xs mt-1">
+                        Pool A: {poolARounds} rounds • Pool B: {poolBRounds} rounds
+                      </p>
+                    )}
+                  </div>
                 </div>
               );
             })()}
@@ -1127,9 +1158,9 @@ export default function RoundRobinPage() {
                 </div>
               )}
               
-              {/* Bye indicator */}
+              {/* Bye indicator - only show for pools that have matches in this round */}
               {(() => {
-                // Find teams with byes this round
+                // Find teams with actual byes this round (not pools that are simply done)
                 const teamsPlayingThisRound = new Set<string>();
                 roundMatches.forEach(m => {
                   teamsPlayingThisRound.add(m.team1.id);
@@ -1137,27 +1168,49 @@ export default function RoundRobinPage() {
                 });
                 
                 const teamsWithByes: { team: Team; pool: string }[] = [];
+                const poolsDone: string[] = [];
+                
                 pools.forEach(pool => {
-                  pool.teams.forEach(team => {
-                    if (!teamsPlayingThisRound.has(team.id)) {
-                      teamsWithByes.push({ team, pool: pool.name });
-                    }
-                  });
+                  // Check if this pool has any matches in this round
+                  const poolHasMatchesThisRound = pool.matches.some(m => m.round === activeRound);
+                  
+                  if (!poolHasMatchesThisRound) {
+                    // Pool is done with all their rounds
+                    poolsDone.push(pool.name);
+                  } else {
+                    // Pool has matches this round, check for byes
+                    pool.teams.forEach(team => {
+                      if (!teamsPlayingThisRound.has(team.id)) {
+                        teamsWithByes.push({ team, pool: pool.name });
+                      }
+                    });
+                  }
                 });
                 
-                if (teamsWithByes.length === 0) return null;
+                if (teamsWithByes.length === 0 && poolsDone.length === 0) return null;
                 
                 return (
-                  <div className="mt-4 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
-                    <p className="text-yellow-400 text-sm">
-                      <span className="font-semibold">Bye this round:</span>{" "}
-                      {teamsWithByes.map((t, i) => (
-                        <span key={t.team.id}>
-                          {t.team.name} <span className="text-yellow-400/50">({t.pool})</span>
-                          {i < teamsWithByes.length - 1 ? ", " : ""}
-                        </span>
-                      ))}
-                    </p>
+                  <div className="mt-4 space-y-2">
+                    {teamsWithByes.length > 0 && (
+                      <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+                        <p className="text-yellow-400 text-sm">
+                          <span className="font-semibold">Bye this round:</span>{" "}
+                          {teamsWithByes.map((t, i) => (
+                            <span key={t.team.id}>
+                              {t.team.name} <span className="text-yellow-400/50">({t.pool})</span>
+                              {i < teamsWithByes.length - 1 ? ", " : ""}
+                            </span>
+                          ))}
+                        </p>
+                      </div>
+                    )}
+                    {poolsDone.length > 0 && (
+                      <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/30">
+                        <p className="text-green-400 text-sm">
+                          <span className="font-semibold">✓ {poolsDone.join(" & ")} complete</span> — all matches played
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
