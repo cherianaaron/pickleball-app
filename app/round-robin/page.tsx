@@ -1050,7 +1050,7 @@ export default function RoundRobinPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white">Round {activeRound} Matches</h3>
                 <span className="text-white/50 text-sm">
-                  {roundMatches.length} match{roundMatches.length !== 1 ? "es" : ""} on {Math.max(...roundMatches.map(m => m.court || 0))} court{roundMatches.length > 1 ? "s" : ""}
+                  {roundMatches.length} match{roundMatches.length !== 1 ? "es" : ""} on {Math.max(...roundMatches.map(m => m.court || 0), 0)} court{roundMatches.length > 1 ? "s" : ""}
                 </span>
               </div>
               
