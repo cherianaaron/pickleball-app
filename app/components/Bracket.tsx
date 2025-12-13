@@ -320,8 +320,8 @@ export default function Bracket() {
   
   // Find the first round to determine base height
   const firstRoundMatches = matchesByRound[1]?.length || rounds[0]?.[1]?.length || 1;
-  // Each match slot height (card + gap)
-  const matchSlotHeight = 130;
+  // Each match slot height - card is ~110px tall, plus 50px gap for comfortable spacing
+  const matchSlotHeight = 160;
   const baseHeight = firstRoundMatches * matchSlotHeight;
 
   return (
@@ -342,14 +342,14 @@ export default function Bracket() {
                     {roundNames(roundNum, tournament.rounds)}
                   </h3>
                   <div 
-                    className="flex flex-col"
-                    style={{ height: `${baseHeight}px` }}
+                    className="flex flex-col justify-around"
+                    style={{ minHeight: `${baseHeight}px` }}
                   >
                     {matches.map((match) => (
                       <div 
                         key={match.id}
-                        className="flex items-center justify-center"
-                        style={{ height: `${slotHeight}px` }}
+                        className="flex items-center justify-center py-2"
+                        style={{ minHeight: `${slotHeight}px` }}
                       >
                         <MatchCard
                           match={match}
@@ -363,7 +363,7 @@ export default function Bracket() {
                 
                 {/* Connector lines to next round */}
                 {!isLastRound && matches.length >= 1 && (
-                  <div className="flex flex-col" style={{ paddingTop: '40px' }}>
+                  <div className="flex flex-col justify-around" style={{ minHeight: `${baseHeight}px`, paddingTop: '40px' }}>
                     <BracketConnectorSVG 
                       matchCount={matches.length} 
                       slotHeight={slotHeight}
