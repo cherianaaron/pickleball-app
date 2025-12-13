@@ -201,6 +201,91 @@ function MatchCard({ match, onScoreClick, gameTimerMinutes }: { match: Match; on
   );
 }
 
+// SVG Connector for bracket lines - connects matches between rounds
+function BracketConnectorSVG({ 
+  matchCount, 
+  slotHeight 
+}: { 
+  matchCount: number; 
+  slotHeight: number;
+}) {
+  const connectorWidth = 40;
+  const totalHeight = matchCount * slotHeight;
+  const connectorCount = Math.floor(matchCount / 2);
+  
+  return (
+    <svg 
+      width={connectorWidth} 
+      height={totalHeight} 
+      className="flex-shrink-0"
+      style={{ display: 'block' }}
+    >
+      <defs>
+        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="rgba(163, 230, 53, 0.6)" />
+          <stop offset="100%" stopColor="rgba(163, 230, 53, 0.3)" />
+        </linearGradient>
+      </defs>
+      {Array.from({ length: connectorCount }).map((_, i) => {
+        // Top match center Y
+        const topMatchY = (i * 2) * slotHeight + slotHeight / 2;
+        // Bottom match center Y  
+        const bottomMatchY = (i * 2 + 1) * slotHeight + slotHeight / 2;
+        // Middle point (where they connect)
+        const midY = (topMatchY + bottomMatchY) / 2;
+        
+        return (
+          <g key={i}>
+            {/* Line from top match to vertical bar */}
+            <line 
+              x1="0" 
+              y1={topMatchY} 
+              x2={connectorWidth / 2} 
+              y2={topMatchY}
+              stroke="url(#lineGradient)"
+              strokeWidth="2"
+            />
+            {/* Line from bottom match to vertical bar */}
+            <line 
+              x1="0" 
+              y1={bottomMatchY} 
+              x2={connectorWidth / 2} 
+              y2={bottomMatchY}
+              stroke="url(#lineGradient)"
+              strokeWidth="2"
+            />
+            {/* Vertical connecting bar */}
+            <line 
+              x1={connectorWidth / 2} 
+              y1={topMatchY} 
+              x2={connectorWidth / 2} 
+              y2={bottomMatchY}
+              stroke="rgba(163, 230, 53, 0.5)"
+              strokeWidth="2"
+            />
+            {/* Line to next round match */}
+            <line 
+              x1={connectorWidth / 2} 
+              y1={midY} 
+              x2={connectorWidth} 
+              y2={midY}
+              stroke="url(#lineGradient)"
+              strokeWidth="2"
+            />
+            {/* Glowing dot at connection point */}
+            <circle 
+              cx={connectorWidth / 2} 
+              cy={midY} 
+              r="3"
+              fill="rgba(163, 230, 53, 0.8)"
+            />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export default function Bracket() {
   const { tournament } = useTournament();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -225,38 +310,69 @@ export default function Bracket() {
   });
 
   const roundNames = (round: number, totalRounds: number) => {
-    if (round === totalRounds) return "🏆 Finals";
-    if (round === totalRounds - 1) return "Semifinals";
-    if (round === totalRounds - 2) return "Quarterfinals";
-    return `Round ${round}`;
+    if (round === totalRounds) return "🏆 FINALS";
+    if (round === totalRounds - 1) return "SEMIFINALS";
+    if (round === totalRounds - 2) return "QUARTERFINALS";
+    return `ROUND ${round}`;
   };
+
+  const rounds = Object.entries(matchesByRound).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+  
+  // Find the first round to determine base height
+  const firstRoundMatches = matchesByRound[1]?.length || rounds[0]?.[1]?.length || 1;
+  // Each match slot height (card + gap)
+  const matchSlotHeight = 130;
+  const baseHeight = firstRoundMatches * matchSlotHeight;
 
   return (
     <>
       <div className="w-full overflow-x-auto pb-8">
-        <div className="flex gap-8 min-w-max px-4">
-          {Object.entries(matchesByRound).map(([round, matches]) => (
-            <div key={round} className="flex flex-col gap-4">
-              <h3 className="text-center text-white/60 font-semibold text-sm uppercase tracking-wider mb-2">
-                {roundNames(parseInt(round), tournament.rounds)}
-              </h3>
-              <div 
-                className="flex flex-col justify-around gap-4"
-                style={{ 
-                  minHeight: `${matches.length * 120}px`,
-                }}
-              >
-                {matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    onScoreClick={setSelectedMatch}
-                    gameTimerMinutes={tournament.settings.gameTimerMinutes}
-                  />
-                ))}
+        <div className="flex items-stretch min-w-max px-4">
+          {rounds.map(([round, matches], roundIndex) => {
+            const roundNum = parseInt(round);
+            const isLastRound = roundIndex === rounds.length - 1;
+            // Each round's slot height doubles to center between previous round's matches
+            const slotHeight = matchSlotHeight * Math.pow(2, roundIndex);
+            
+            return (
+              <div key={round} className="flex items-stretch">
+                {/* Round column */}
+                <div className="flex flex-col min-w-[220px]">
+                  <h3 className="text-center text-white/60 font-semibold text-sm uppercase tracking-wider mb-4 h-6">
+                    {roundNames(roundNum, tournament.rounds)}
+                  </h3>
+                  <div 
+                    className="flex flex-col"
+                    style={{ height: `${baseHeight}px` }}
+                  >
+                    {matches.map((match) => (
+                      <div 
+                        key={match.id}
+                        className="flex items-center justify-center"
+                        style={{ height: `${slotHeight}px` }}
+                      >
+                        <MatchCard
+                          match={match}
+                          onScoreClick={setSelectedMatch}
+                          gameTimerMinutes={tournament.settings.gameTimerMinutes}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Connector lines to next round */}
+                {!isLastRound && matches.length >= 1 && (
+                  <div className="flex flex-col" style={{ paddingTop: '40px' }}>
+                    <BracketConnectorSVG 
+                      matchCount={matches.length} 
+                      slotHeight={slotHeight}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
