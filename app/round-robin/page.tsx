@@ -812,12 +812,12 @@ export default function RoundRobinPage() {
                   <select
                     value={scoreLimit}
                     onChange={(e) => setScoreLimit(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl bg-emerald-800 border border-white/20 text-white"
+                    className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white"
                   >
-                    <option value={7} className="bg-emerald-800 text-white">7 points</option>
-                    <option value={11} className="bg-emerald-800 text-white">11 points</option>
-                    <option value={15} className="bg-emerald-800 text-white">15 points</option>
-                    <option value={21} className="bg-emerald-800 text-white">21 points</option>
+                    <option value={7} style={{ backgroundColor: '#134e4a', color: '#ffffff' }}>7 points</option>
+                    <option value={11} style={{ backgroundColor: '#134e4a', color: '#ffffff' }}>11 points</option>
+                    <option value={15} style={{ backgroundColor: '#134e4a', color: '#ffffff' }}>15 points</option>
+                    <option value={21} style={{ backgroundColor: '#134e4a', color: '#ffffff' }}>21 points</option>
                   </select>
                 </div>
                 <div>
@@ -825,10 +825,10 @@ export default function RoundRobinPage() {
                   <select
                     value={numCourts}
                     onChange={(e) => setNumCourts(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl bg-emerald-800 border border-white/20 text-white"
+                    className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white"
                   >
                     {[1, 2, 3, 4, 5, 6].map(n => (
-                      <option key={n} value={n} className="bg-emerald-800 text-white">{n} court{n > 1 ? "s" : ""}</option>
+                      <option key={n} value={n} style={{ backgroundColor: '#134e4a', color: '#ffffff' }}>{n} court{n > 1 ? "s" : ""}</option>
                     ))}
                   </select>
                 </div>
