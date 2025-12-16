@@ -53,47 +53,59 @@ export default function Home() {
             </p>
 
             {/* Quick actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 flex-wrap">
+            <div className="flex flex-col items-center justify-center gap-6 max-w-md mx-auto">
               {!tournament?.isStarted ? (
                 <>
-                  <Link
-                    href="/players"
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
-                  >
-                    ➕ Add Players
-                  </Link>
-                  {canStartTournament && (
-                    <button
-                      onClick={generateBracket}
-                      className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
+                  {/* Round Robin Option */}
+                  <div className="w-full text-center">
+                    <p className="text-white/70 text-lg mb-3">Create a Round Robin Tournament</p>
+                    <Link
+                      href="/round-robin"
+                      className="w-full block px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg shadow-orange-400/30 hover:shadow-orange-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
                     >
-                      🏆 Start Bracket
-                    </button>
-                  )}
-                  <Link
-                    href="/round-robin"
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg shadow-orange-400/30 hover:shadow-orange-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
-                  >
-                    🔄 Round Robin
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
-                  >
-                    ⚙️ Settings
-                  </Link>
+                      🔄 Round Robin
+                    </Link>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="flex-1 h-px bg-white/20"></div>
+                    <span className="text-white/50 text-sm font-medium">Or</span>
+                    <div className="flex-1 h-px bg-white/20"></div>
+                  </div>
+
+                  {/* Bracket Option */}
+                  <div className="w-full text-center">
+                    <p className="text-white/70 text-lg mb-3">Create a Bracket (Single Elimination)</p>
+                    <Link
+                      href="/players"
+                      className="w-full block px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+                    >
+                      🏆 Bracket
+                    </Link>
+                  </div>
+
+                  {/* Settings at bottom */}
+                  <div className="w-full pt-4">
+                    <Link
+                      href="/settings"
+                      className="w-full block px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300 text-center"
+                    >
+                      ⚙️ Settings
+                    </Link>
+                  </div>
                 </>
               ) : (
                 <>
                   <Link
                     href="/bracket"
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+                    className="w-full px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300 text-center"
                   >
                     📊 View Bracket
                   </Link>
                   <button
                     onClick={resetTournament}
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
+                    className="w-full px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
                   >
                     🔄 New Tournament
                   </button>
@@ -145,14 +157,14 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
               {
-                icon: "👥",
-                title: "Add Players",
-                description: "Enter all participating players for your tournament",
+                icon: "🎯",
+                title: "Choose Tournament Style",
+                description: "Create a Round Robin or Bracket style tournament. Adjust settings before starting.",
               },
               {
-                icon: "🎲",
-                title: "Generate Bracket",
-                description: "Automatically create a randomized single-elimination bracket",
+                icon: "👥",
+                title: "Add Teams/Players",
+                description: "Enter all participants and generate your tournament bracket or pools",
               },
               {
                 icon: "📝",
@@ -180,6 +192,11 @@ export default function Home() {
               </div>
             ))}
           </div>
+
+          {/* FAQ Link */}
+          <p className="text-center text-white/60 mt-8">
+            Visit the <Link href="/faq" className="text-lime-400 hover:text-lime-300 underline underline-offset-2 font-medium">FAQ</Link> section for more help on how to use the app
+          </p>
         </div>
       </section>
 
