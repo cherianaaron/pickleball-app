@@ -443,7 +443,7 @@ export default function FAQPage() {
             Found a bug or have a feature request? Let us know!
           </p>
           <Link
-            href="/settings"
+            href="/settings#bug-report"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
           >
             🐛 Report a Bug

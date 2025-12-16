@@ -331,7 +331,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Bug Report Section */}
-          <div className="glass rounded-3xl p-6">
+          <div id="bug-report" className="glass rounded-3xl p-6 scroll-mt-24">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-xl bg-red-400/20 flex items-center justify-center flex-shrink-0">
                 <span className="text-2xl">🐛</span>
