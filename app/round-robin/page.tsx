@@ -769,7 +769,7 @@ export default function RoundRobinPage() {
           </Link>
           <div className="text-center">
             <div className="inline-block mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
                 <span className="text-3xl">🔄</span>
               </div>
             </div>
