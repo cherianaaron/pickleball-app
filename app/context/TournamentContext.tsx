@@ -119,6 +119,18 @@ function nextPowerOf2(n: number): number {
   return power;
 }
 
+// Calculate number of rounds needed for n players without forcing power of 2
+function calculateRoundsForPlayers(n: number): number {
+  if (n <= 1) return 0;
+  let rounds = 0;
+  let remaining = n;
+  while (remaining > 1) {
+    remaining = Math.ceil(remaining / 2);
+    rounds++;
+  }
+  return rounds;
+}
+
 export function TournamentProvider({ children }: { children: ReactNode }) {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(false); // Start as false - no auto-loading
@@ -335,48 +347,20 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
     try {
       setError(null);
-      const bracketSize = nextPowerOf2(tournament.players.length);
-      const rounds = Math.log2(bracketSize);
+      const numPlayers = tournament.players.length;
       const scoreLimit = tournament.settings.scoreLimit;
 
-      // Sort players by seed (assumes seed is already assigned based on ranking)
-      // If players have seeds, use them; otherwise use array order as seed
+      // Sort players by seed
       const seededPlayers = [...tournament.players].sort((a, b) => {
         const seedA = a.seed ?? Infinity;
         const seedB = b.seed ?? Infinity;
         return seedA - seedB;
       });
 
-      // Generate proper bracket seeding positions
-      // For a bracket of size N, this creates the standard seeding where:
-      // - Seed 1 plays Seed N (or bye)
-      // - Seed 2 plays Seed N-1 (or bye)
-      // - etc.
-      // This ensures top seeds get byes and face lower seeds in early rounds
-      const generateBracketPositions = (size: number): number[] => {
-        if (size === 2) return [1, 2];
-        
-        const positions: number[] = [];
-        const halfSize = size / 2;
-        const upperHalf = generateBracketPositions(halfSize);
-        
-        for (const pos of upperHalf) {
-          positions.push(pos);
-          positions.push(size + 1 - pos);
-        }
-        
-        return positions;
-      };
-
-      const bracketPositions = generateBracketPositions(bracketSize);
+      // For standalone brackets: NO BYES in round 1
+      // All players play in round 1, byes only happen in later rounds if odd number of players
+      const rounds = calculateRoundsForPlayers(numPlayers);
       
-      // Map seed positions to players (null for byes)
-      const positionedPlayers: (Player | null)[] = bracketPositions.map(seedPos => {
-        // seedPos is 1-indexed
-        const playerIndex = seedPos - 1;
-        return playerIndex < seededPlayers.length ? seededPlayers[playerIndex] : null;
-      });
-
       const matchesToCreate: {
         tournament_id: string;
         round: number;
@@ -391,29 +375,54 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
       let matchNumber = 0;
 
-      // Generate first round matches with proper seeding
-      for (let i = 0; i < bracketSize / 2; i++) {
-        const player1 = positionedPlayers[i * 2];
-        const player2 = positionedPlayers[i * 2 + 1];
-        const isBye = player1 === null || player2 === null;
-        const winner = isBye ? (player1 || player2) : null;
-
+      // Round 1: Pair all players, if odd number the last player gets a bye
+      const round1PlayerCount = numPlayers;
+      const round1Matches = Math.floor(round1PlayerCount / 2);
+      const round1HasBye = round1PlayerCount % 2 === 1;
+      
+      // Create standard seeding for round 1: 1v(n), 2v(n-1), etc.
+      // This ensures best plays worst, second best plays second worst, etc.
+      for (let i = 0; i < round1Matches; i++) {
+        const player1 = seededPlayers[i];
+        const player2 = seededPlayers[numPlayers - 1 - i];
+        
         matchesToCreate.push({
           tournament_id: tournament.id,
           round: 1,
           match_number: matchNumber++,
           player1_id: player1?.id || null,
           player2_id: player2?.id || null,
-          score1: isBye ? (player1 ? scoreLimit : 0) : null,
-          score2: isBye ? (player2 ? scoreLimit : 0) : null,
-          winner_id: winner?.id || null,
-          is_complete: isBye,
+          score1: null,
+          score2: null,
+          winner_id: null,
+          is_complete: false,
         });
       }
 
-      // Generate empty matches for subsequent rounds
+      // If odd number of players, the middle seed gets a bye
+      // They advance directly but we don't create a "bye match"
+      let byePlayerForRound2: Player | null = null;
+      if (round1HasBye) {
+        const byeIndex = Math.floor(numPlayers / 2);
+        byePlayerForRound2 = seededPlayers[byeIndex];
+      }
+
+      // Calculate match counts for subsequent rounds
+      // Round 2 has: floor(round1Winners/2) matches where round1Winners = round1Matches + (1 if bye)
+      let playersInNextRound = round1Matches + (round1HasBye ? 1 : 0);
+      
+      // Track rounds that have an odd number of entering players (bye needed)
+      const roundsWithByes: number[] = [];
+      if (round1HasBye) roundsWithByes.push(1); // Round 1's bye advances to round 2
+      
       for (let round = 2; round <= rounds; round++) {
-        const matchesInRound = bracketSize / Math.pow(2, round);
+        const matchesInRound = Math.floor(playersInNextRound / 2);
+        const hasOddPlayers = playersInNextRound % 2 === 1;
+        
+        if (hasOddPlayers && round < rounds) {
+          roundsWithByes.push(round); // This round's bye advances to next round
+        }
+        
         for (let i = 0; i < matchesInRound; i++) {
           matchesToCreate.push({
             tournament_id: tournament.id,
@@ -427,6 +436,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
             is_complete: false,
           });
         }
+        
+        // For next round: this round's match winners + potential bye player from this round
+        playersInNextRound = matchesInRound + (hasOddPlayers ? 1 : 0);
       }
 
       // Insert all matches
@@ -437,33 +449,21 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
       if (insertError) throw insertError;
 
-      // Advance bye winners to next round
-      const matchesByRound: { [key: number]: typeof insertedMatches } = {};
-      insertedMatches?.forEach((m) => {
-        if (!matchesByRound[m.round]) matchesByRound[m.round] = [];
-        matchesByRound[m.round].push(m);
-      });
-
-      // Process bye advancements
-      for (let round = 1; round < rounds; round++) {
-        const currentRoundMatches = matchesByRound[round] || [];
-        const nextRoundMatches = matchesByRound[round + 1] || [];
-
-        for (let i = 0; i < currentRoundMatches.length; i++) {
-          const match = currentRoundMatches[i];
-          if (match.winner_id) {
-            const nextMatchIndex = Math.floor(i / 2);
-            const nextMatch = nextRoundMatches[nextMatchIndex];
-            if (nextMatch) {
-              const updateField = i % 2 === 0 ? "player1_id" : "player2_id";
-              await supabase
-                .from("matches")
-                .update({ [updateField]: match.winner_id })
-                .eq("id", nextMatch.id);
-            }
-          }
+      // If there was a bye player for round 2 (from odd round 1), place them in round 2
+      if (byePlayerForRound2 && insertedMatches) {
+        const round2Matches = insertedMatches.filter(m => m.round === 2);
+        if (round2Matches.length > 0) {
+          // Put bye player in the last position of round 2 (they'll be player 2 of last match)
+          const lastMatch = round2Matches[round2Matches.length - 1];
+          await supabase
+            .from("matches")
+            .update({ player2_id: byePlayerForRound2.id })
+            .eq("id", lastMatch.id);
         }
       }
+      
+      // Note: For odd player counts in later rounds, bye advancement is handled dynamically
+      // in updateMatchScore when the match is completed
 
       // Update tournament status
       const { error: updateError } = await supabase
@@ -509,15 +509,37 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       if (nextRoundMatches.length > 0) {
         const currentRoundMatches = tournament.matches.filter((m) => m.round === match.round);
         const matchIndexInRound = currentRoundMatches.findIndex((m) => m.id === matchId);
-        const nextMatchIndex = Math.floor(matchIndexInRound / 2);
-        const nextMatch = nextRoundMatches[nextMatchIndex];
-
-        if (nextMatch) {
-          const updateField = matchIndexInRound % 2 === 0 ? "player1_id" : "player2_id";
-          await supabase
-            .from("matches")
-            .update({ [updateField]: winner.id })
-            .eq("id", nextMatch.id);
+        
+        // Calculate how many matches in next round can be fed from current round
+        // If current round has odd matches, the last match winner gets a bye (advances 2 rounds)
+        const isOddCurrentRound = currentRoundMatches.length % 2 === 1;
+        const isLastMatchInOddRound = isOddCurrentRound && matchIndexInRound === currentRoundMatches.length - 1;
+        
+        if (isLastMatchInOddRound) {
+          // This winner has a bye - they skip the next round and go to the round after
+          const roundAfterNext = tournament.matches.filter((m) => m.round === match.round + 2);
+          if (roundAfterNext.length > 0) {
+            // Place in the last match of that round
+            const targetMatch = roundAfterNext[roundAfterNext.length - 1];
+            const slotToFill = targetMatch.player1 === null ? "player1_id" : "player2_id";
+            await supabase
+              .from("matches")
+              .update({ [slotToFill]: winner.id })
+              .eq("id", targetMatch.id);
+          }
+        } else {
+          // Normal advancement - calculate next match position
+          const nextMatchIndex = Math.floor(matchIndexInRound / 2);
+          const nextMatch = nextRoundMatches[nextMatchIndex];
+          
+          if (nextMatch) {
+            // Even-indexed matches feed into player1 slot, odd into player2 slot
+            const updateField = matchIndexInRound % 2 === 0 ? "player1_id" : "player2_id";
+            await supabase
+              .from("matches")
+              .update({ [updateField]: winner.id })
+              .eq("id", nextMatch.id);
+          }
         }
       }
 
