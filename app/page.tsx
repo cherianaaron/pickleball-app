@@ -56,6 +56,23 @@ export default function Home() {
             <div className="flex flex-col items-center justify-center gap-6 max-w-md mx-auto">
               {!tournament?.isStarted ? (
                 <>
+                  {/* New User Guide */}
+                  <div className="w-full">
+                    <Link
+                      href="/faq"
+                      className="w-full block px-6 py-3 rounded-2xl text-base font-semibold bg-white/10 backdrop-blur-sm text-white border border-lime-400/30 hover:bg-white/20 hover:border-lime-400/50 transition-all duration-300 text-center"
+                    >
+                      📖 New here? Learn How It Works
+                    </Link>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="flex-1 h-px bg-white/20"></div>
+                    <span className="text-white/50 text-sm font-medium">Start a Tournament</span>
+                    <div className="flex-1 h-px bg-white/20"></div>
+                  </div>
+
                   {/* Round Robin Option */}
                   <div className="w-full text-center">
                     <p className="text-white/70 text-lg mb-3">Create a Round Robin Tournament</p>
