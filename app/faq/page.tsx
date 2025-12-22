@@ -167,6 +167,11 @@ export default function FAQPage() {
             </ul>
           </div>
 
+          <div className="bg-gradient-to-r from-orange-400/10 to-lime-400/10 rounded-xl p-4 mt-4 border border-orange-400/20">
+            <h4 className="text-white font-semibold mb-2">💡 Pro Tip: Round Robin → Bracket</h4>
+            <p>Want to use Round Robin results to seed a separate Bracket tournament? After completing pool play, note the final rankings. Then create a new <strong className="text-lime-400">Bracket tournament</strong> and add players in seed order (best to worst). The bracket will automatically match top seeds against lower seeds!</p>
+          </div>
+
           <p className="mt-4 text-lime-400/80 text-sm">
             ✨ Your round robin progress is automatically saved. You can leave the page and come back - just navigate back to Round Robin to continue where you left off.
           </p>
@@ -335,8 +340,19 @@ export default function FAQPage() {
             <p>Hover over a tournament and click the 🗑️ delete button, or select a tournament and click <strong className="text-red-400">Delete Tournament</strong>. This action is permanent and cannot be undone.</p>
           </div>
 
+          <div className="bg-gradient-to-r from-orange-400/10 to-lime-400/10 rounded-xl p-4 mt-4 border border-orange-400/20">
+            <h4 className="text-white font-semibold mb-2">🔄 Using Round Robin Results for Brackets</h4>
+            <p>Completed a Round Robin tournament and want to create a seeded Bracket? Use the final standings from your Round Robin to determine player seeding:</p>
+            <ol className="list-decimal list-inside space-y-1 ml-2 mt-2 text-sm">
+              <li>Note the final rankings from your Round Robin tournament</li>
+              <li>Create a new <strong className="text-lime-400">Bracket tournament</strong></li>
+              <li>Add players in order of their Round Robin ranking (1st place first, then 2nd, etc.)</li>
+              <li>Generate the bracket - top seeds will face lower seeds!</li>
+            </ol>
+          </div>
+
           <p className="mt-4 text-white/60 text-sm">
-            Note: Round Robin tournaments are also saved automatically. Return to the Round Robin page to continue an in-progress tournament.
+            Note: Round Robin tournaments are saved separately. Return to the Round Robin page to continue an in-progress tournament or view past results.
           </p>
         </>
       ),

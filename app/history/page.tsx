@@ -296,7 +296,10 @@ export default function HistoryPage() {
             </div>
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Tournament History</h1>
-          <p className="text-white/50">View all past tournaments and their results</p>
+          <p className="text-white/50">View all past bracket tournaments and their results</p>
+          <p className="text-white/40 text-sm mt-2">
+            💡 Tip: Use Round Robin final standings to seed your bracket tournaments!
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
