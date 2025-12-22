@@ -193,9 +193,9 @@ export default function Home() {
             ))}
           </div>
 
-          {/* FAQ Link */}
+          {/* How It Works Link */}
           <p className="text-center text-white/60 mt-8">
-            Visit the <Link href="/faq" className="text-lime-400 hover:text-lime-300 underline underline-offset-2 font-medium">FAQ</Link> section for more help on how to use the app
+            Visit the <Link href="/faq" className="text-lime-400 hover:text-lime-300 underline underline-offset-2 font-medium">How It Works</Link> section for more help on how to use the app
           </p>
         </div>
       </section>

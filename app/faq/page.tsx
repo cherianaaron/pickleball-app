@@ -419,7 +419,7 @@ export default function FAQPage() {
                 <span className="text-3xl">❓</span>
               </div>
             </div>
-            <h1 className="text-4xl font-bold text-white mb-2">FAQ & How to Use</h1>
+            <h1 className="text-4xl font-bold text-white mb-2">How It Works</h1>
             <p className="text-white/50">Everything you need to know about PickleBracket</p>
           </div>
         </div>
@@ -440,7 +440,7 @@ export default function FAQPage() {
           </button>
         </div>
 
-        {/* FAQ Sections */}
+        {/* Sections */}
         <div className="space-y-4">
           {faqSections.map((section) => (
             <AccordionItem
