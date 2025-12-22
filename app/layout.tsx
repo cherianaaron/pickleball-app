@@ -22,6 +22,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "PickleBracket | Tournament Manager",
   description: "Create and manage pickleball tournaments with ease. Generate brackets, track scores, and crown champions!",
+  icons: {
+    icon: "/pickleball.svg",
+    shortcut: "/pickleball.svg",
+    apple: "/pickleball.svg",
+  },
 };
 
 export default function RootLayout({
