@@ -72,8 +72,11 @@ export default function PlayersPage() {
               <span className="text-4xl">👥</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-4">No Active Bracket Tournament</h1>
-            <p className="text-white/60 mb-8">
+            <p className="text-white/60 mb-4">
               Create a new bracket-style tournament to start adding players and generating brackets.
+            </p>
+            <p className="text-orange-400/80 text-sm mb-8">
+              ⚠️ This page is for <strong>Bracket tournaments only</strong>. For Round Robin, go to the <Link href="/round-robin" className="underline hover:text-orange-300">Round Robin page</Link>.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -109,6 +112,9 @@ export default function PlayersPage() {
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Manage Players</h1>
           <p className="text-white/50">Add participants for your pickleball tournament</p>
+          <p className="text-orange-400/80 text-sm mt-2">
+            ⚠️ This page is for <strong>Bracket tournaments only</strong>. For Round Robin, go to the <Link href="/round-robin" className="underline hover:text-orange-300">Round Robin page</Link>.
+          </p>
         </div>
 
         {/* Tournament Name */}
