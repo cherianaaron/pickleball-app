@@ -24,9 +24,6 @@ export default function Home() {
     );
   }
 
-  const canStartTournament = tournament && tournament.players.length >= 2 && !tournament.isStarted;
-  const tournamentInProgress = tournament?.isStarted && !tournament.isComplete;
-
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -131,37 +128,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Stats/Status Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            <div className="glass rounded-3xl p-6 text-center hover:scale-105 transition-transform duration-300">
-              <div className="text-4xl mb-3">👥</div>
-              <p className="text-3xl font-bold text-white mb-1">
-                {tournament?.players.length || 0}
-              </p>
-              <p className="text-white/50">Players</p>
-            </div>
-            <div className="glass rounded-3xl p-6 text-center hover:scale-105 transition-transform duration-300">
-              <div className="text-4xl mb-3">🎯</div>
-              <p className="text-3xl font-bold text-white mb-1">
-                {tournament?.matches.filter(m => m.isComplete).length || 0}
-                <span className="text-white/30 text-xl"> / {tournament?.matches.length || 0}</span>
-              </p>
-              <p className="text-white/50">Matches</p>
-            </div>
-            <div className="glass rounded-3xl p-6 text-center hover:scale-105 transition-transform duration-300">
-              <div className="text-4xl mb-3">
-                {tournament?.isComplete ? "🏆" : tournamentInProgress ? "⚡" : "💤"}
-              </div>
-              <p className="text-lg font-bold text-white mb-1">
-                {tournament?.isComplete 
-                  ? "Complete!" 
-                  : tournamentInProgress 
-                    ? "In Progress" 
-                    : "Not Started"}
-              </p>
-              <p className="text-white/50">Status</p>
-            </div>
-          </div>
         </div>
       </section>
 
