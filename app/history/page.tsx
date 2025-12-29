@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { useTournament } from "../context/TournamentContext";
+import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
@@ -55,6 +56,7 @@ interface TournamentDetail {
 
 export default function HistoryPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const { tournament: currentTournament, loadTournamentById, resetTournament } = useTournament();
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<TournamentDetail | null>(null);
@@ -106,20 +108,35 @@ export default function HistoryPage() {
   };
 
   useEffect(() => {
-    loadTournaments();
-  }, []);
+    // Wait for auth to load before fetching tournaments
+    if (!authLoading) {
+      loadTournaments();
+    }
+  }, [authLoading, user]);
 
   const loadTournaments = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get all tournaments with a limit for performance
-      const { data: tournamentsData, error: tournamentError } = await supabase
+      // Build query - filter by user_id if logged in
+      let query = supabase
         .from("tournaments")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50); // Limit to most recent 50 tournaments
+
+      // Filter by user's tournaments if logged in
+      if (user) {
+        query = query.eq("user_id", user.id);
+      } else {
+        // If not logged in, show nothing (user must login to see their history)
+        setTournaments([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: tournamentsData, error: tournamentError } = await query;
 
       if (tournamentError) throw tournamentError;
 
@@ -279,7 +296,7 @@ export default function HistoryPage() {
     return `Round ${round}`;
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner message="Loading tournament history..." />
@@ -291,6 +308,31 @@ export default function HistoryPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <ErrorMessage message={error} onRetry={loadTournaments} />
+      </div>
+    );
+  }
+
+  // Show login prompt if not signed in
+  if (!user) {
+    return (
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md mx-auto text-center">
+          <div className="glass rounded-3xl p-8 sm:p-12">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6">
+              <span className="text-4xl">📜</span>
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-4">Tournament History</h1>
+            <p className="text-white/60 mb-8">
+              Sign in to view your tournament history and past results.
+            </p>
+            <Link
+              href="/login?redirect=/history"
+              className="inline-block px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              Sign In to View History
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

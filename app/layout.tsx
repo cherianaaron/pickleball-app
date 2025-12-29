@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { TournamentProvider } from "./context/TournamentContext";
+import { AuthProvider } from "./context/AuthContext";
 import Navigation from "./components/Navigation";
 import WinnerDisplay from "./components/WinnerDisplay";
 
@@ -39,13 +40,15 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <TournamentProvider>
-          <Navigation />
-          <main className="pt-16 min-h-screen">
-            {children}
-          </main>
-          <WinnerDisplay />
-        </TournamentProvider>
+        <AuthProvider>
+          <TournamentProvider>
+            <Navigation />
+            <main className="pt-16 min-h-screen">
+              {children}
+            </main>
+            <WinnerDisplay />
+          </TournamentProvider>
+        </AuthProvider>
         <SpeedInsights />
         <Analytics />
       </body>

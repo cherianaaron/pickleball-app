@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface Player {
   id: string;
@@ -132,6 +133,7 @@ function calculateRoundsForPlayers(n: number): number {
 }
 
 export function TournamentProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(false); // Start as false - no auto-loading
   const [error, setError] = useState<string | null>(null);
@@ -598,6 +600,12 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
   }, [tournament]);
 
   const resetTournament = useCallback(async () => {
+    // Require login to create tournaments
+    if (!user) {
+      setError("Please sign in to create a tournament");
+      return;
+    }
+
     try {
       setError(null);
       setLoading(true);
@@ -605,7 +613,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       // Get user's saved settings (persisted across tournaments) or use defaults
       const userSettings = getUserSettings();
 
-      // Create a new tournament with user's saved settings
+      // Create a new tournament with user's saved settings and user_id
       const { data: newTournament, error: createError } = await supabase
         .from("tournaments")
         .insert({ 
@@ -613,6 +621,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
           score_limit: userSettings.scoreLimit,
           win_by_two: userSettings.winByTwo,
           game_timer_minutes: userSettings.gameTimerMinutes,
+          user_id: user.id,
         })
         .select()
         .single();
@@ -636,7 +645,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   const startMatchTimer = useCallback(async (matchId: string) => {
     if (!tournament) return;

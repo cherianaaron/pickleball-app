@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 interface Team {
@@ -57,6 +58,7 @@ type Phase = "setup" | "pool-play" | "rankings" | "playoffs";
 
 export default function RoundRobinPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [phase, setPhase] = useState<Phase>("setup");
   const [loading, setLoading] = useState(false); // Start false - no auto-loading
   const [saving, setSaving] = useState(false);
@@ -367,6 +369,13 @@ export default function RoundRobinPage() {
   }, [teams]);
 
   const startPoolPlay = async () => {
+    // Require login to create tournaments
+    if (!user) {
+      setError("Please sign in to create a tournament");
+      router.push("/login?redirect=/round-robin");
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -374,7 +383,7 @@ export default function RoundRobinPage() {
       const generatedPools = generatePools();
       if (!generatedPools) return;
       
-      // Create tournament in database
+      // Create tournament in database with user_id
       const { data: tournament, error: tournamentError } = await supabase
         .from("round_robin_tournaments")
         .insert({
@@ -383,6 +392,7 @@ export default function RoundRobinPage() {
           num_courts: numCourts,
           is_pool_play_complete: false,
           is_playoffs_started: false,
+          user_id: user.id,
         })
         .select()
         .single();
@@ -632,7 +642,7 @@ export default function RoundRobinPage() {
       // Clear localStorage since we're moving to playoffs
       localStorage.removeItem(ACTIVE_RR_KEY);
       
-      // Create a new bracket tournament with the playoff teams
+      // Create a new bracket tournament with the playoff teams (with user_id)
       const { data: bracketTournament, error: createError } = await supabase
         .from("tournaments")
         .insert({
@@ -642,6 +652,7 @@ export default function RoundRobinPage() {
           is_complete: false,
           score_limit: scoreLimit,
           win_by_two: true,
+          user_id: user?.id,
         })
         .select()
         .single();
@@ -723,10 +734,40 @@ export default function RoundRobinPage() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner message="Loading round robin..." />
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated and in setup phase
+  if (!user && phase === "setup") {
+    return (
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md mx-auto text-center">
+          <div className="glass rounded-3xl p-8 sm:p-12">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30 mx-auto mb-6">
+              <span className="text-4xl">🔄</span>
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-4">Round Robin Tournament</h1>
+            <p className="text-white/60 mb-8">
+              Sign in to create and manage your Round Robin tournaments.
+            </p>
+            <Link
+              href="/login?redirect=/round-robin"
+              className="inline-block px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg shadow-orange-400/30 hover:shadow-orange-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              Sign In to Create Tournament
+            </Link>
+            <div className="mt-6">
+              <Link href="/" className="text-white/40 hover:text-white/70 transition-colors text-sm">
+                ← Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

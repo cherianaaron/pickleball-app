@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { user, loading, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const links = [
     { href: "/", label: "Home", icon: "🏠" },
@@ -39,7 +43,40 @@ export default function Navigation() {
   // Close menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setShowUserMenu(false);
   }, [pathname]);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+
+    if (showUserMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showUserMenu]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowUserMenu(false);
+  };
+
+  // Get user display name or email
+  const getUserDisplayName = () => {
+    if (!user) return "";
+    return user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+  };
+
+  const getUserAvatar = () => {
+    return user?.user_metadata?.avatar_url || null;
+  };
 
   // Get current page info for mobile display
   const currentPage = links.find(link => link.href === pathname) || links[0];
@@ -79,6 +116,62 @@ export default function Navigation() {
                 </Link>
               );
             })}
+
+            {/* Auth Button */}
+            <div className="ml-2 pl-2 border-l border-white/20">
+              {loading ? (
+                <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+              ) : user ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
+                  >
+                    {getUserAvatar() ? (
+                      <img 
+                        src={getUserAvatar()!} 
+                        alt={getUserDisplayName()} 
+                        className="w-6 h-6 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-lime-400 flex items-center justify-center text-emerald-900 text-xs font-bold">
+                        {getUserDisplayName().charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-white text-sm font-medium max-w-[100px] truncate">
+                      {getUserDisplayName()}
+                    </span>
+                    <span className={`text-white/60 text-xs transition-transform duration-300 ${showUserMenu ? "rotate-180" : ""}`}>
+                      ▼
+                    </span>
+                  </button>
+
+                  {/* User Dropdown */}
+                  {showUserMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-gradient-to-br from-emerald-900 to-teal-900 rounded-xl border border-lime-400/20 shadow-xl shadow-black/30 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-white/10">
+                        <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
+                        <p className="text-white/50 text-xs truncate">{user.email}</p>
+                      </div>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full px-4 py-3 text-left text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      >
+                        <span>🚪</span>
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-300"
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Mobile Navigation */}
@@ -126,6 +219,50 @@ export default function Navigation() {
                     </Link>
                   );
                 })}
+                
+                {/* Auth option in mobile menu */}
+                <div className="border-t border-white/10 mt-1 pt-1">
+                  {loading ? (
+                    <div className="px-4 py-3">
+                      <div className="w-full h-4 bg-white/10 rounded animate-pulse" />
+                    </div>
+                  ) : user ? (
+                    <>
+                      <div className="px-4 py-2 flex items-center gap-3">
+                        {getUserAvatar() ? (
+                          <img 
+                            src={getUserAvatar()!} 
+                            alt={getUserDisplayName()} 
+                            className="w-8 h-8 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-lime-400 flex items-center justify-center text-emerald-900 text-sm font-bold">
+                            {getUserDisplayName().charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
+                          <p className="text-white/50 text-xs truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-500/10 border-l-4 border-transparent transition-all duration-200"
+                      >
+                        <span className="text-lg">🚪</span>
+                        <span>Sign Out</span>
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      href="/login"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-lime-400 hover:bg-lime-400/10 border-l-4 border-transparent transition-all duration-200"
+                    >
+                      <span className="text-lg">🔐</span>
+                      <span>Sign In</span>
+                    </Link>
+                  )}
+                </div>
               </div>
             )}
           </div>
