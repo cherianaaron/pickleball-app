@@ -1084,15 +1084,23 @@ export default function RoundRobinPage() {
                 <p className="text-white/40 text-center py-8">No matches in this round</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {roundMatches.map(match => (
+                  {roundMatches.map(match => {
+                    // Waiting matches (no court) cannot have scores entered
+                    const isWaiting = !match.court;
+                    const canEnterScore = !isWaiting;
+                    
+                    return (
                     <div
                       key={match.id}
-                      className={`rounded-xl p-4 border cursor-pointer transition-all ${
+                      className={`rounded-xl p-4 border transition-all ${
                         match.isComplete
-                          ? "bg-green-500/10 border-green-500/30 hover:border-green-400/50"
-                          : "bg-white/5 border-white/10 hover:border-orange-500/50"
+                          ? "bg-green-500/10 border-green-500/30 hover:border-green-400/50 cursor-pointer"
+                          : isWaiting
+                            ? "bg-yellow-500/5 border-yellow-500/20 opacity-60"
+                            : "bg-white/5 border-white/10 hover:border-orange-500/50 cursor-pointer"
                       }`}
                       onClick={() => {
+                        if (!canEnterScore && !match.isComplete) return; // Don't allow click on waiting matches
                         setSelectedMatch(match);
                         setIsEditing(match.isComplete);
                         if (match.isComplete) {
@@ -1177,16 +1185,23 @@ export default function RoundRobinPage() {
                       
                       {/* Click hint */}
                       {!match.isComplete ? (
-                        <p className="text-orange-400/70 text-xs text-center mt-3">
-                          Tap to enter score
-                        </p>
+                        isWaiting ? (
+                          <p className="text-yellow-400/50 text-xs text-center mt-3">
+                            ⏳ Waiting for court - no score needed
+                          </p>
+                        ) : (
+                          <p className="text-orange-400/70 text-xs text-center mt-3">
+                            Tap to enter score
+                          </p>
+                        )
                       ) : (
                         <p className="text-green-400/50 text-xs text-center mt-3">
                           Tap to edit score
                         </p>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               
