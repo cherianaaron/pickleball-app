@@ -169,7 +169,15 @@ export default function FAQPage() {
 
           <div className="bg-gradient-to-r from-orange-400/10 to-lime-400/10 rounded-xl p-4 mt-4 border border-orange-400/20">
             <h4 className="text-white font-semibold mb-2">💡 Pro Tip: Round Robin → Bracket</h4>
-            <p>Want to use Round Robin results to seed a separate Bracket tournament? After completing pool play, note the final rankings. Then create a new <strong className="text-lime-400">Bracket tournament</strong> and add players in seed order (best to worst). The bracket will automatically match top seeds against lower seeds!</p>
+            <p>Want to use Round Robin results to seed a Bracket tournament? Here&apos;s how:</p>
+            <ol className="list-decimal list-inside space-y-1 ml-2 mt-2">
+              <li>Complete your Round Robin tournament and view the final standings</li>
+              <li>Go to <strong className="text-lime-400">🏆 Bracket</strong> from the navigation</li>
+              <li>Create a new bracket tournament</li>
+              <li>Add players <strong className="text-white">in seed order</strong> (1st place first, then 2nd, etc.)</li>
+              <li>Generate the bracket - top seeds will automatically face lower seeds!</li>
+            </ol>
+            <p className="mt-2 text-white/60 text-sm">Note: Round Robin and Bracket are separate tournament types. You&apos;ll need to manually add players to the bracket based on your Round Robin rankings.</p>
           </div>
 
           <p className="mt-4 text-lime-400/80 text-sm">
@@ -381,17 +389,18 @@ export default function FAQPage() {
 
           <div className="bg-gradient-to-r from-orange-400/10 to-lime-400/10 rounded-xl p-4 mt-4 border border-orange-400/20">
             <h4 className="text-white font-semibold mb-2">🔄 Using Round Robin Results for Brackets</h4>
-            <p>Completed a Round Robin tournament and want to create a seeded Bracket? Use the final standings from your Round Robin to determine player seeding:</p>
+            <p>Completed a Round Robin tournament and want to create a seeded Bracket? You&apos;ll need to <strong className="text-white">manually create a new bracket</strong> using your Round Robin standings:</p>
             <ol className="list-decimal list-inside space-y-1 ml-2 mt-2 text-sm">
-              <li>Note the final rankings from your Round Robin tournament</li>
-              <li>Create a new <strong className="text-lime-400">Bracket tournament</strong></li>
-              <li>Add players in order of their Round Robin ranking (1st place first, then 2nd, etc.)</li>
-              <li>Generate the bracket - top seeds will face lower seeds!</li>
+              <li>View the final rankings in your completed Round Robin tournament</li>
+              <li>Navigate to <strong className="text-lime-400">🏆 Bracket</strong> and create a new tournament</li>
+              <li>Manually add players in order of their Round Robin ranking (1st place first, then 2nd, etc.)</li>
+              <li>Generate the bracket - the seeding will ensure top performers face lower seeds!</li>
             </ol>
+            <p className="mt-2 text-white/50 text-sm">⚠️ Round Robin and Bracket tournaments are separate - there is no automatic import feature. You must manually re-enter player names.</p>
           </div>
 
           <p className="mt-4 text-white/60 text-sm">
-            Note: Round Robin tournaments are saved separately. Return to the Round Robin page to continue an in-progress tournament or view past results.
+            Note: This History page shows <strong>Bracket tournaments only</strong>. Round Robin tournaments are saved separately - return to the Round Robin page to view past results.
           </p>
         </>
       ),
