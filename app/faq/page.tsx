@@ -183,16 +183,14 @@ export default function FAQPage() {
           </div>
 
           <div className="bg-gradient-to-r from-orange-400/10 to-lime-400/10 rounded-xl p-4 mt-4 border border-orange-400/20">
-            <h4 className="text-white font-semibold mb-2">💡 Pro Tip: Round Robin → Bracket</h4>
-            <p>Want to use Round Robin results to seed a Bracket tournament? Here&apos;s how:</p>
-            <ol className="list-decimal list-inside space-y-1 ml-2 mt-2">
-              <li>Complete your Round Robin tournament and view the final standings</li>
-              <li>Go to <strong className="text-lime-400">🏆 Bracket</strong> from the navigation</li>
-              <li>Create a new bracket tournament</li>
-              <li>Add players <strong className="text-white">in seed order</strong> (1st place first, then 2nd, etc.)</li>
-              <li>Generate the bracket - top seeds will automatically face lower seeds!</li>
-            </ol>
-            <p className="mt-2 text-white/60 text-sm">Note: Round Robin and Bracket are separate tournament types. You&apos;ll need to manually add players to the bracket based on your Round Robin rankings.</p>
+            <h4 className="text-white font-semibold mb-2">💡 Automatic Playoff Bracket</h4>
+            <p>After completing all pool play matches, click <strong className="text-lime-400">Start Playoffs →</strong> to automatically:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2 mt-2">
+              <li>Create a new bracket tournament named &quot;[Your Tournament] - Playoffs&quot;</li>
+              <li>Import the top 6 teams with proper seeding (1st place = Seed 1, etc.)</li>
+              <li>Redirect you to the bracket page ready to generate and play!</li>
+            </ul>
+            <p className="mt-2 text-lime-400/80 text-sm">✨ No manual entry needed - everything is handled automatically!</p>
           </div>
 
           <p className="mt-4 text-lime-400/80 text-sm">
@@ -403,15 +401,16 @@ export default function FAQPage() {
           </div>
 
           <div className="bg-gradient-to-r from-orange-400/10 to-lime-400/10 rounded-xl p-4 mt-4 border border-orange-400/20">
-            <h4 className="text-white font-semibold mb-2">🔄 Using Round Robin Results for Brackets</h4>
-            <p>Completed a Round Robin tournament and want to create a seeded Bracket? You&apos;ll need to <strong className="text-white">manually create a new bracket</strong> using your Round Robin standings:</p>
+            <h4 className="text-white font-semibold mb-2">🔄 Round Robin → Bracket Playoffs</h4>
+            <p>Completed a Round Robin tournament? The app <strong className="text-lime-400">automatically creates a seeded bracket</strong> for playoffs:</p>
             <ol className="list-decimal list-inside space-y-1 ml-2 mt-2 text-sm">
-              <li>View the final rankings in your completed Round Robin tournament</li>
-              <li>Navigate to <strong className="text-lime-400">🏆 Bracket</strong> and create a new tournament</li>
-              <li>Manually add players in order of their Round Robin ranking (1st place first, then 2nd, etc.)</li>
-              <li>Generate the bracket - the seeding will ensure top performers face lower seeds!</li>
+              <li>Complete all pool play matches in your Round Robin tournament</li>
+              <li>View the final rankings - top 6 teams qualify for playoffs</li>
+              <li>Click <strong className="text-lime-400">Start Playoffs →</strong></li>
+              <li>A bracket tournament is <strong className="text-white">automatically created</strong> with your teams seeded by ranking!</li>
+              <li>You&apos;ll be redirected to the bracket page to generate and play</li>
             </ol>
-            <p className="mt-2 text-white/50 text-sm">⚠️ Round Robin and Bracket tournaments are separate - there is no automatic import feature. You must manually re-enter player names.</p>
+            <p className="mt-2 text-lime-400/80 text-sm">✨ No manual entry needed - teams are imported automatically with correct seeding!</p>
           </div>
 
           <p className="mt-4 text-white/60 text-sm">
