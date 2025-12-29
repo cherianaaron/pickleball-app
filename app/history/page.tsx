@@ -69,7 +69,7 @@ export default function HistoryPage() {
 
   const handleLoadTournament = async (tournamentId: string) => {
     await loadTournamentById(tournamentId);
-    router.push("/");
+    router.push("/bracket");
   };
 
   const handleDeleteTournament = async (tournamentId: string) => {
