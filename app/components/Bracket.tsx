@@ -69,7 +69,13 @@ function PausedTimerIndicator({ remainingSeconds }: { remainingSeconds: number }
   );
 }
 
-function MatchCard({ match, onScoreClick, gameTimerMinutes }: { match: Match; onScoreClick: (match: Match) => void; gameTimerMinutes: number | null }) {
+function MatchCard({ match, onScoreClick, gameTimerMinutes, isByePlayer1, isByePlayer2 }: { 
+  match: Match; 
+  onScoreClick: (match: Match) => void; 
+  gameTimerMinutes: number | null;
+  isByePlayer1?: boolean;
+  isByePlayer2?: boolean;
+}) {
   const canEnterScore = match.player1 && match.player2 && !match.isComplete;
   const canEditScore = match.player1 && match.player2 && match.isComplete;
   const isBye = (match.player1 === null || match.player2 === null) && match.isComplete;
@@ -146,6 +152,11 @@ function MatchCard({ match, onScoreClick, gameTimerMinutes }: { match: Match; on
                 <span className={`font-medium ${match.winner?.id === match.player1.id ? "text-lime-400" : "text-white"}`}>
                   {match.player1.name}
                 </span>
+                {isByePlayer1 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-400 font-medium">
+                    BYE
+                  </span>
+                )}
               </>
             ) : (
               <span className="text-white/30 italic">TBD</span>
@@ -182,6 +193,11 @@ function MatchCard({ match, onScoreClick, gameTimerMinutes }: { match: Match; on
                 <span className={`font-medium ${match.winner?.id === match.player2.id ? "text-lime-400" : "text-white"}`}>
                   {match.player2.name}
                 </span>
+                {isByePlayer2 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-400 font-medium">
+                    BYE
+                  </span>
+                )}
               </>
             ) : (
               <span className="text-white/30 italic">TBD</span>
@@ -368,6 +384,53 @@ export default function Bracket() {
   // Each match slot height - card is ~110px tall, plus 50px gap for comfortable spacing
   const matchSlotHeight = 140;
   const baseHeight = Math.max(firstRoundMatches * matchSlotHeight, 400);
+  
+  // Calculate which players got a bye (appear in a round without winning in previous round)
+  // A bye player is someone who appears in round N but didn't win any match in round N-1
+  const getByePlayers = (roundNum: number): Set<string> => {
+    if (roundNum <= 1) return new Set(); // No byes possible in round 1
+    
+    const byePlayers = new Set<string>();
+    const currentRoundMatches = matchesByRound[roundNum] || [];
+    const prevRoundMatches = matchesByRound[roundNum - 1] || [];
+    
+    // Get all winners from previous round
+    const prevRoundWinners = new Set<string>();
+    prevRoundMatches.forEach(m => {
+      if (m.winner?.id) prevRoundWinners.add(m.winner.id);
+    });
+    
+    // Check each player in current round - if they weren't a winner in prev round, they got a bye
+    currentRoundMatches.forEach(m => {
+      if (m.player1?.id && !prevRoundWinners.has(m.player1.id)) {
+        // Check if they won any earlier round (skip-round bye)
+        const wonAnyPrevRound = tournament.matches.some(
+          pm => pm.round < roundNum && pm.winner?.id === m.player1?.id
+        );
+        // Only mark as bye if they won a round but skipped the immediate previous round
+        // OR if they never played before (from round 1 bye)
+        const round1Player = tournament.matches.some(
+          pm => pm.round === 1 && (pm.player1?.id === m.player1?.id || pm.player2?.id === m.player1?.id)
+        );
+        if (!round1Player || wonAnyPrevRound) {
+          byePlayers.add(m.player1.id);
+        }
+      }
+      if (m.player2?.id && !prevRoundWinners.has(m.player2.id)) {
+        const wonAnyPrevRound = tournament.matches.some(
+          pm => pm.round < roundNum && pm.winner?.id === m.player2?.id
+        );
+        const round1Player = tournament.matches.some(
+          pm => pm.round === 1 && (pm.player1?.id === m.player2?.id || pm.player2?.id === m.player2?.id)
+        );
+        if (!round1Player || wonAnyPrevRound) {
+          byePlayers.add(m.player2.id);
+        }
+      }
+    });
+    
+    return byePlayers;
+  };
 
   return (
     <>
@@ -380,6 +443,9 @@ export default function Bracket() {
             
             // Calculate slot height based on how matches need to be distributed in the total height
             const slotHeight = baseHeight / matches.length;
+            
+            // Get bye players for this round
+            const byePlayers = getByePlayers(roundNum);
             
             return (
               <div key={round} className="flex items-stretch">
@@ -402,6 +468,8 @@ export default function Bracket() {
                           match={match}
                           onScoreClick={setSelectedMatch}
                           gameTimerMinutes={tournament.settings.gameTimerMinutes}
+                          isByePlayer1={match.player1?.id ? byePlayers.has(match.player1.id) : false}
+                          isByePlayer2={match.player2?.id ? byePlayers.has(match.player2.id) : false}
                         />
                       </div>
                     ))}

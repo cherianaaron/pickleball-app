@@ -510,31 +510,41 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         const currentRoundMatches = tournament.matches.filter((m) => m.round === match.round);
         const matchIndexInRound = currentRoundMatches.findIndex((m) => m.id === matchId);
         
-        // Calculate how many matches in next round can be fed from current round
-        // If current round has odd matches, the last match winner gets a bye (advances 2 rounds)
+        // Check if this winner should get a bye (skip next round)
+        // A bye only happens when:
+        // 1. Current round has odd number of matches
+        // 2. This is the last match in the round
+        // 3. The next round has fewer matches than would be needed for normal bracket flow
+        //    (i.e., next round matches * 2 < current round matches)
         const isOddCurrentRound = currentRoundMatches.length % 2 === 1;
         const isLastMatchInOddRound = isOddCurrentRound && matchIndexInRound === currentRoundMatches.length - 1;
+        const roundAfterNext = tournament.matches.filter((m) => m.round === match.round + 2);
         
-        if (isLastMatchInOddRound) {
+        // Only give a bye if there's actually a round after next to advance to
+        // AND the next round can't accommodate all winners normally
+        const shouldGetBye = isLastMatchInOddRound && 
+                             roundAfterNext.length > 0 && 
+                             nextRoundMatches.length * 2 < currentRoundMatches.length;
+        
+        if (shouldGetBye) {
           // This winner has a bye - they skip the next round and go to the round after
-          const roundAfterNext = tournament.matches.filter((m) => m.round === match.round + 2);
-          if (roundAfterNext.length > 0) {
-            // Place in the last match of that round
-            const targetMatch = roundAfterNext[roundAfterNext.length - 1];
-            const slotToFill = targetMatch.player1 === null ? "player1_id" : "player2_id";
-            await supabase
-              .from("matches")
-              .update({ [slotToFill]: winner.id })
-              .eq("id", targetMatch.id);
-          }
+          // Place in the last match of that round
+          const targetMatch = roundAfterNext[roundAfterNext.length - 1];
+          const slotToFill = targetMatch.player1 === null ? "player1_id" : "player2_id";
+          await supabase
+            .from("matches")
+            .update({ [slotToFill]: winner.id })
+            .eq("id", targetMatch.id);
         } else {
           // Normal advancement - calculate next match position
-          const nextMatchIndex = Math.floor(matchIndexInRound / 2);
+          // When current round has odd matches but no bye (last winner goes to next round normally)
+          const effectiveIndex = matchIndexInRound;
+          const nextMatchIndex = Math.floor(effectiveIndex / 2);
           const nextMatch = nextRoundMatches[nextMatchIndex];
           
           if (nextMatch) {
             // Even-indexed matches feed into player1 slot, odd into player2 slot
-            const updateField = matchIndexInRound % 2 === 0 ? "player1_id" : "player2_id";
+            const updateField = effectiveIndex % 2 === 0 ? "player1_id" : "player2_id";
             await supabase
               .from("matches")
               .update({ [updateField]: winner.id })
