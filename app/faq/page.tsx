@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface FAQSection {
   id: string;
@@ -12,7 +12,7 @@ interface FAQSection {
 
 function AccordionItem({ section, isOpen, onToggle }: { section: FAQSection; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="glass rounded-2xl overflow-hidden">
+    <div id={`section-${section.id}`} className="glass rounded-2xl overflow-hidden scroll-mt-24">
       <button
         onClick={onToggle}
         className="w-full px-6 py-4 flex items-center justify-between gap-4 text-left hover:bg-white/5 transition-colors"
@@ -38,6 +38,21 @@ function AccordionItem({ section, isOpen, onToggle }: { section: FAQSection; isO
 
 export default function FAQPage() {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["getting-started"]));
+
+  // Handle URL hash to open specific section (e.g., /faq#round-robin)
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (hash) {
+      setOpenSections(new Set([hash]));
+      // Scroll to the section after a brief delay to allow render
+      setTimeout(() => {
+        const element = document.getElementById(`section-${hash}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+  }, []);
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => {

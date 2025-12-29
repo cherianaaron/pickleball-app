@@ -780,6 +780,14 @@ export default function RoundRobinPage() {
               {phase === "rankings" && "Final Rankings - Select playoff teams"}
               {phase === "playoffs" && "Playoffs"}
             </p>
+            {phase === "setup" && (
+              <p className="text-white/40 text-sm mt-2">
+                Every team plays every other team in their pool.{" "}
+                <Link href="/faq#round-robin" className="text-lime-400 hover:underline">
+                  Learn more →
+                </Link>
+              </p>
+            )}
           </div>
         </div>
 
