@@ -95,7 +95,7 @@ export default function Navigation() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden sm:flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1 ml-6">
             {links.map((link) => {
               const isActive = pathname === link.href;
               return (
