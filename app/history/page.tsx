@@ -114,51 +114,61 @@ export default function HistoryPage() {
       setLoading(true);
       setError(null);
 
-      // Get all tournaments
+      // Get all tournaments with a limit for performance
       const { data: tournamentsData, error: tournamentError } = await supabase
         .from("tournaments")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(50); // Limit to most recent 50 tournaments
 
       if (tournamentError) throw tournamentError;
 
-      // Get player counts for each tournament
-      const summaries: TournamentSummary[] = [];
-
-      for (const t of tournamentsData || []) {
-        const { count: playerCount } = await supabase
-          .from("players")
-          .select("*", { count: "exact", head: true })
-          .eq("tournament_id", t.id);
-
-        const { count: matchCount } = await supabase
-          .from("matches")
-          .select("*", { count: "exact", head: true })
-          .eq("tournament_id", t.id);
-
-        // Get champion name if exists
-        let championName = null;
-        if (t.champion_id) {
-          const { data: champion } = await supabase
-            .from("players")
-            .select("name")
-            .eq("id", t.champion_id)
-            .single();
-          championName = champion?.name || null;
-        }
-
-        summaries.push({
-          id: t.id,
-          name: t.name,
-          isStarted: t.is_started,
-          isComplete: t.is_complete,
-          rounds: t.rounds || 0,
-          playerCount: playerCount || 0,
-          matchCount: matchCount || 0,
-          championName,
-          createdAt: t.created_at,
-        });
+      if (!tournamentsData || tournamentsData.length === 0) {
+        setTournaments([]);
+        return;
       }
+
+      // Get all tournament IDs
+      const tournamentIds = tournamentsData.map(t => t.id);
+
+      // Batch fetch all players and matches in parallel (much faster than N+1 queries)
+      const [playersResult, matchesResult] = await Promise.all([
+        supabase
+          .from("players")
+          .select("id, tournament_id, name")
+          .in("tournament_id", tournamentIds),
+        supabase
+          .from("matches")
+          .select("id, tournament_id")
+          .in("tournament_id", tournamentIds)
+      ]);
+
+      // Create lookup maps for counts
+      const playerCountMap = new Map<string, number>();
+      const playerNameMap = new Map<string, string>(); // player_id -> name
+      
+      (playersResult.data || []).forEach(p => {
+        playerCountMap.set(p.tournament_id, (playerCountMap.get(p.tournament_id) || 0) + 1);
+        playerNameMap.set(p.id, p.name);
+      });
+
+      const matchCountMap = new Map<string, number>();
+      (matchesResult.data || []).forEach(m => {
+        matchCountMap.set(m.tournament_id, (matchCountMap.get(m.tournament_id) || 0) + 1);
+      });
+
+      // Build summaries using the pre-fetched data
+      const summaries: TournamentSummary[] = tournamentsData.map(t => ({
+        id: t.id,
+        name: t.name,
+        isStarted: t.is_started,
+        isComplete: t.is_complete,
+        rounds: t.rounds || 0,
+        playerCount: playerCountMap.get(t.id) || 0,
+        matchCount: matchCountMap.get(t.id) || 0,
+        championName: t.champion_id ? playerNameMap.get(t.champion_id) || null : null,
+        createdAt: t.created_at,
+      }));
 
       setTournaments(summaries);
     } catch (err) {
