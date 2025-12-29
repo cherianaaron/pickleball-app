@@ -228,6 +228,45 @@ export default function FAQPage() {
       ),
     },
     {
+      id: "byes",
+      icon: "⏭️",
+      title: "Understanding BYEs",
+      content: (
+        <>
+          <p>
+            A <strong className="text-yellow-400">BYE</strong> is when a player or team automatically advances to the next round <em>without playing a match</em>. This happens when the number of participants doesn&apos;t perfectly fill the bracket.
+          </p>
+
+          <div className="bg-white/5 rounded-xl p-4 mt-4">
+            <h4 className="text-white font-semibold mb-2">When Do BYEs Happen?</h4>
+            <ul className="list-disc list-inside space-y-2 ml-2">
+              <li><strong>Bracket Tournaments:</strong> When you have an odd number of players (like 6 players), one player will get a BYE because 3 winners from Round 1 can&apos;t be evenly paired in Round 2.</li>
+              <li><strong>Round Robin:</strong> When you have an odd number of teams in a pool, one team sits out each round (marked as &quot;BYE&quot;).</li>
+              <li><strong>Non-Power-of-2 Brackets:</strong> With 6 players, 3 matches happen in Round 1, producing 3 winners. Only 2 can play in Round 2, so the 3rd gets a BYE to the Finals.</li>
+            </ul>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 mt-4">
+            <h4 className="text-white font-semibold mb-2">How to Identify BYE Players</h4>
+            <p>In the bracket view, players who received a BYE are marked with a <span className="px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-400 text-xs font-medium">BYE</span> badge next to their name. This indicates they advanced without playing in the previous round.</p>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 mt-4">
+            <h4 className="text-white font-semibold mb-2">Example: 6 Players</h4>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li><strong>Round 1:</strong> 3 matches (6 players → 3 winners)</li>
+              <li><strong>Round 2:</strong> 1 match (2 of the 3 winners play; 1 winner gets a BYE)</li>
+              <li><strong>Finals:</strong> Round 2 winner vs BYE player</li>
+            </ul>
+          </div>
+
+          <p className="mt-4 text-lime-400/80 text-sm">
+            💡 Tip: BYEs are assigned automatically based on tournament size. In seeded brackets, typically the top seeds receive BYEs as an advantage.
+          </p>
+        </>
+      ),
+    },
+    {
       id: "timers",
       icon: "⏱️",
       title: "Using Game Timers",
