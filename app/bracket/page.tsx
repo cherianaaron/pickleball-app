@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Bracket from "../components/Bracket";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { useTournament } from "../context/TournamentContext";
 
-export default function BracketPage() {
+function BracketPageContent() {
   const { tournament, loading, error, resetTournament, loadTournamentById } = useTournament();
   const searchParams = useSearchParams();
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
@@ -185,3 +185,14 @@ export default function BracketPage() {
   );
 }
 
+export default function BracketPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Loading bracket..." />
+      </div>
+    }>
+      <BracketPageContent />
+    </Suspense>
+  );
+}
