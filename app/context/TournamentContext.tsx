@@ -530,21 +530,45 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
           // This winner has a bye - they skip the next round and go to the round after
           // Place in the last match of that round
           const targetMatch = roundAfterNext[roundAfterNext.length - 1];
-          const slotToFill = targetMatch.player1 === null ? "player1_id" : "player2_id";
+          
+          // Fetch fresh state of the target match to see which slot is available
+          const { data: freshTargetMatch } = await supabase
+            .from("matches")
+            .select("player1_id, player2_id")
+            .eq("id", targetMatch.id)
+            .single();
+          
+          const slotToFill = freshTargetMatch?.player1_id === null ? "player1_id" : "player2_id";
           await supabase
             .from("matches")
             .update({ [slotToFill]: winner.id })
             .eq("id", targetMatch.id);
         } else {
           // Normal advancement - calculate next match position
-          // When current round has odd matches but no bye (last winner goes to next round normally)
           const effectiveIndex = matchIndexInRound;
           const nextMatchIndex = Math.floor(effectiveIndex / 2);
           const nextMatch = nextRoundMatches[nextMatchIndex];
           
           if (nextMatch) {
-            // Even-indexed matches feed into player1 slot, odd into player2 slot
-            const updateField = effectiveIndex % 2 === 0 ? "player1_id" : "player2_id";
+            // Fetch fresh state of the next match to see which slot is actually available
+            // This is important because a bye player might have already filled a slot
+            const { data: freshNextMatch } = await supabase
+              .from("matches")
+              .select("player1_id, player2_id")
+              .eq("id", nextMatch.id)
+              .single();
+            
+            // Determine which slot to fill based on actual availability
+            // Prefer the slot based on match index, but use the other if it's taken
+            const preferredField = effectiveIndex % 2 === 0 ? "player1_id" : "player2_id";
+            const preferredSlotFilled = preferredField === "player1_id" 
+              ? freshNextMatch?.player1_id !== null 
+              : freshNextMatch?.player2_id !== null;
+            
+            const updateField = preferredSlotFilled 
+              ? (preferredField === "player1_id" ? "player2_id" : "player1_id")
+              : preferredField;
+            
             await supabase
               .from("matches")
               .update({ [updateField]: winner.id })
