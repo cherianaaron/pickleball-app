@@ -115,6 +115,11 @@ export default function PlayersPage() {
           <p className="text-orange-400/80 text-sm mt-2">
             ⚠️ This page is for <strong>Bracket tournaments only</strong>. For Round Robin, go to the <Link href="/round-robin" className="underline hover:text-orange-300">Round Robin page</Link>.
           </p>
+          {!tournament?.isStarted && (
+            <p className="text-white/40 text-sm mt-2">
+              ⚙️ Remember to <Link href="/settings" className="text-lime-400 hover:underline">adjust your settings</Link> before generating the bracket!
+            </p>
+          )}
         </div>
 
         {/* Tournament Name */}
