@@ -381,8 +381,8 @@ export default function Bracket() {
   
   // Find the first round to determine base height
   const firstRoundMatches = rounds[0]?.[1]?.length || 1;
-  // Each match slot height - card is ~110px tall, plus 50px gap for comfortable spacing
-  const matchSlotHeight = 140;
+  // Each match slot height - card is ~110px tall, plus gap for comfortable spacing
+  const matchSlotHeight = 170; // Increased from 140 for more spacing between cards
   const baseHeight = Math.max(firstRoundMatches * matchSlotHeight, 400);
   
   // Calculate which players got a bye (appear in a round without winning in previous round)
