@@ -19,7 +19,9 @@ export interface Match {
   score1: number | null;
   score2: number | null;
   winner: Player | null;
+  loser: Player | null;
   isComplete: boolean;
+  isBronzeMatch: boolean; // True if this is a 3rd place match
   timerStartedAt: string | null; // ISO timestamp when timer was started
   timerPausedRemaining: number | null; // Seconds remaining when paused
 }
@@ -198,7 +200,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score1: number | null;
         score2: number | null;
         winner_id: string | null;
+        loser_id: string | null;
         is_complete: boolean;
+        is_bronze_match: boolean;
         timer_started_at: string | null;
         timer_paused_remaining: number | null;
       }) => ({
@@ -210,7 +214,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score1: m.score1,
         score2: m.score2,
         winner: m.winner_id ? playerMap.get(m.winner_id) || null : null,
+        loser: m.loser_id ? playerMap.get(m.loser_id) || null : null,
         isComplete: m.is_complete,
+        isBronzeMatch: m.is_bronze_match || false,
         timerStartedAt: m.timer_started_at,
         timerPausedRemaining: m.timer_paused_remaining,
       }));
@@ -383,7 +389,6 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     try {
       setError(null);
       const numPlayers = tournament.players.length;
-      const scoreLimit = tournament.settings.scoreLimit;
 
       // Sort players by seed
       const seededPlayers = [...tournament.players].sort((a, b) => {
@@ -392,8 +397,14 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         return seedA - seedB;
       });
 
-      // For standalone brackets: NO BYES in round 1
-      // All players play in round 1, byes only happen in later rounds if odd number of players
+      // Special case: 6 players (typically from Round Robin playoffs)
+      // Seeds 1 & 2 get byes to semifinals
+      if (numPlayers === 6) {
+        await generate6PlayerPlayoffBracket(tournament.id, seededPlayers);
+        return;
+      }
+
+      // Standard bracket generation for other player counts
       const rounds = calculateRoundsForPlayers(numPlayers);
       
       const matchesToCreate: {
@@ -406,6 +417,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score2: number | null;
         winner_id: string | null;
         is_complete: boolean;
+        is_bronze_match: boolean;
       }[] = [];
 
       let matchNumber = 0;
@@ -416,7 +428,6 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       const round1HasBye = round1PlayerCount % 2 === 1;
       
       // Create standard seeding for round 1: 1v(n), 2v(n-1), etc.
-      // This ensures best plays worst, second best plays second worst, etc.
       for (let i = 0; i < round1Matches; i++) {
         const player1 = seededPlayers[i];
         const player2 = seededPlayers[numPlayers - 1 - i];
@@ -431,32 +442,22 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
           score2: null,
           winner_id: null,
           is_complete: false,
+          is_bronze_match: false,
         });
       }
 
       // If odd number of players, the middle seed gets a bye
-      // They advance directly but we don't create a "bye match"
       let byePlayerForRound2: Player | null = null;
       if (round1HasBye) {
         const byeIndex = Math.floor(numPlayers / 2);
         byePlayerForRound2 = seededPlayers[byeIndex];
       }
 
-      // Calculate match counts for subsequent rounds
-      // Round 2 has: floor(round1Winners/2) matches where round1Winners = round1Matches + (1 if bye)
       let playersInNextRound = round1Matches + (round1HasBye ? 1 : 0);
-      
-      // Track rounds that have an odd number of entering players (bye needed)
-      const roundsWithByes: number[] = [];
-      if (round1HasBye) roundsWithByes.push(1); // Round 1's bye advances to round 2
       
       for (let round = 2; round <= rounds; round++) {
         const matchesInRound = Math.floor(playersInNextRound / 2);
         const hasOddPlayers = playersInNextRound % 2 === 1;
-        
-        if (hasOddPlayers && round < rounds) {
-          roundsWithByes.push(round); // This round's bye advances to next round
-        }
         
         for (let i = 0; i < matchesInRound; i++) {
           matchesToCreate.push({
@@ -469,10 +470,10 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
             score2: null,
             winner_id: null,
             is_complete: false,
+            is_bronze_match: false,
           });
         }
         
-        // For next round: this round's match winners + potential bye player from this round
         playersInNextRound = matchesInRound + (hasOddPlayers ? 1 : 0);
       }
 
@@ -484,11 +485,10 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
       if (insertError) throw insertError;
 
-      // If there was a bye player for round 2 (from odd round 1), place them in round 2
+      // If there was a bye player for round 2, place them
       if (byePlayerForRound2 && insertedMatches) {
         const round2Matches = insertedMatches.filter(m => m.round === 2);
         if (round2Matches.length > 0) {
-          // Put bye player in the last position of round 2 (they'll be player 2 of last match)
           const lastMatch = round2Matches[round2Matches.length - 1];
           await supabase
             .from("matches")
@@ -496,9 +496,6 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
             .eq("id", lastMatch.id);
         }
       }
-      
-      // Note: For odd player counts in later rounds, bye advancement is handled dynamically
-      // in updateMatchScore when the match is completed
 
       // Update tournament status
       const { error: updateError } = await supabase
@@ -508,13 +505,120 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
       if (updateError) throw updateError;
 
-      // Reload tournament to get fresh data
       await reloadCurrentTournament(tournament.id);
     } catch (err) {
       console.error("Error generating bracket:", err);
       setError(err instanceof Error ? err.message : "Failed to generate bracket");
     }
   }, [tournament]);
+
+  // Special bracket generation for 6-player playoffs (from Round Robin)
+  // Structure:
+  // - Round 1 (Quarterfinals): QF1: Seed 3 vs 6, QF2: Seed 4 vs 5
+  // - Round 2 (Semifinals): SF1: Seed 1 vs Winner QF2, SF2: Seed 2 vs Winner QF1
+  // - Round 3: Championship (Winner SF1 vs Winner SF2) + Bronze (Loser SF1 vs Loser SF2)
+  const generate6PlayerPlayoffBracket = async (tournamentId: string, seededPlayers: Player[]) => {
+    const seed1 = seededPlayers[0];
+    const seed2 = seededPlayers[1];
+    const seed3 = seededPlayers[2];
+    const seed4 = seededPlayers[3];
+    const seed5 = seededPlayers[4];
+    const seed6 = seededPlayers[5];
+
+    const matchesToCreate = [
+      // Round 1 - Quarterfinals (Seeds 1 & 2 have byes)
+      {
+        tournament_id: tournamentId,
+        round: 1,
+        match_number: 0,
+        player1_id: seed3.id,  // QF1: Seed 3 vs Seed 6
+        player2_id: seed6.id,
+        score1: null,
+        score2: null,
+        winner_id: null,
+        is_complete: false,
+        is_bronze_match: false,
+      },
+      {
+        tournament_id: tournamentId,
+        round: 1,
+        match_number: 1,
+        player1_id: seed4.id,  // QF2: Seed 4 vs Seed 5
+        player2_id: seed5.id,
+        score1: null,
+        score2: null,
+        winner_id: null,
+        is_complete: false,
+        is_bronze_match: false,
+      },
+      // Round 2 - Semifinals (Seeds 1 & 2 enter here with byes)
+      {
+        tournament_id: tournamentId,
+        round: 2,
+        match_number: 2,
+        player1_id: seed1.id,  // SF1: Seed 1 (bye) vs Winner of QF2
+        player2_id: null,      // Will be filled by winner of QF2 (match_number 1)
+        score1: null,
+        score2: null,
+        winner_id: null,
+        is_complete: false,
+        is_bronze_match: false,
+      },
+      {
+        tournament_id: tournamentId,
+        round: 2,
+        match_number: 3,
+        player1_id: seed2.id,  // SF2: Seed 2 (bye) vs Winner of QF1
+        player2_id: null,      // Will be filled by winner of QF1 (match_number 0)
+        score1: null,
+        score2: null,
+        winner_id: null,
+        is_complete: false,
+        is_bronze_match: false,
+      },
+      // Round 3 - Finals
+      {
+        tournament_id: tournamentId,
+        round: 3,
+        match_number: 4,
+        player1_id: null,  // Championship: Winner SF1 vs Winner SF2
+        player2_id: null,
+        score1: null,
+        score2: null,
+        winner_id: null,
+        is_complete: false,
+        is_bronze_match: false,
+      },
+      {
+        tournament_id: tournamentId,
+        round: 3,
+        match_number: 5,
+        player1_id: null,  // Bronze: Loser SF1 vs Loser SF2
+        player2_id: null,
+        score1: null,
+        score2: null,
+        winner_id: null,
+        is_complete: false,
+        is_bronze_match: true,  // Mark as bronze match
+      },
+    ];
+
+    const { error: insertError } = await supabase
+      .from("matches")
+      .insert(matchesToCreate);
+
+    if (insertError) throw insertError;
+
+    // Update tournament status (3 rounds for 6-player playoff)
+    const { error: updateError } = await supabase
+      .from("tournaments")
+      .update({ is_started: true, rounds: 3 })
+      .eq("id", tournamentId);
+
+    if (updateError) throw updateError;
+
+    await reloadCurrentTournament(tournamentId);
+  };
 
   const updateMatchScore = useCallback(async (matchId: string, score1: number, score2: number) => {
     if (!tournament) return;
@@ -530,13 +634,14 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       const isEditingScore = match.isComplete && previousWinner;
       const winnerChanged = isEditingScore && previousWinner.id !== winner.id;
 
-      // Update the match
+      // Update the match with both winner and loser
       const { error: updateError } = await supabase
         .from("matches")
         .update({
           score1,
           score2,
           winner_id: winner.id,
+          loser_id: loser.id,
           is_complete: true,
         })
         .eq("id", matchId);
@@ -544,7 +649,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       if (updateError) throw updateError;
 
       // Find and update next round match
-      const nextRoundMatches = tournament.matches.filter((m) => m.round === match.round + 1);
+      const nextRoundMatches = tournament.matches.filter((m) => m.round === match.round + 1 && !m.isBronzeMatch);
       if (nextRoundMatches.length > 0) {
         const currentRoundMatches = tournament.matches.filter((m) => m.round === match.round);
         const matchIndexInRound = currentRoundMatches.findIndex((m) => m.id === matchId);
@@ -634,8 +739,46 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Check if this was the final match
-      const isFinalMatch = match.round === tournament.rounds;
+      // Check if there's a bronze match to place the loser in (for semifinal matches)
+      const bronzeMatch = tournament.matches.find((m) => m.round === match.round + 1 && m.isBronzeMatch);
+      if (bronzeMatch) {
+        // This is a semifinal match, place the loser in the bronze match
+        const { data: freshBronzeMatch } = await supabase
+          .from("matches")
+          .select("player1_id, player2_id")
+          .eq("id", bronzeMatch.id)
+          .single();
+        
+        // If editing and loser changed, we need to update the bronze match
+        const previousLoser = isEditingScore && previousWinner ? 
+          (previousWinner.id === match.player1?.id ? match.player2 : match.player1) : null;
+        const loserChanged = previousLoser && previousLoser.id !== loser.id;
+        
+        if (loserChanged && previousLoser) {
+          // Remove old loser from bronze match
+          if (freshBronzeMatch?.player1_id === previousLoser.id) {
+            await supabase.from("matches").update({ player1_id: null }).eq("id", bronzeMatch.id);
+          } else if (freshBronzeMatch?.player2_id === previousLoser.id) {
+            await supabase.from("matches").update({ player2_id: null }).eq("id", bronzeMatch.id);
+          }
+        }
+        
+        // Fetch fresh state again and place loser
+        const { data: freshBronzeState } = await supabase
+          .from("matches")
+          .select("player1_id, player2_id")
+          .eq("id", bronzeMatch.id)
+          .single();
+        
+        const bronzeSlot = freshBronzeState?.player1_id === null ? "player1_id" : "player2_id";
+        await supabase
+          .from("matches")
+          .update({ [bronzeSlot]: loser.id })
+          .eq("id", bronzeMatch.id);
+      }
+
+      // Check if this was the final match (championship)
+      const isFinalMatch = match.round === tournament.rounds && !match.isBronzeMatch;
       if (isFinalMatch) {
         await supabase
           .from("tournaments")
@@ -872,7 +1015,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score1: number | null;
         score2: number | null;
         winner_id: string | null;
+        loser_id: string | null;
         is_complete: boolean;
+        is_bronze_match: boolean;
         timer_started_at: string | null;
         timer_paused_remaining: number | null;
       }) => ({
@@ -884,7 +1029,9 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         score1: m.score1,
         score2: m.score2,
         winner: m.winner_id ? playerMap.get(m.winner_id) || null : null,
+        loser: m.loser_id ? playerMap.get(m.loser_id) || null : null,
         isComplete: m.is_complete,
+        isBronzeMatch: m.is_bronze_match || false,
         timerStartedAt: m.timer_started_at,
         timerPausedRemaining: m.timer_paused_remaining,
       }));

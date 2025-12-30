@@ -107,7 +107,7 @@ function MatchCard({ match, onScoreClick, gameTimerMinutes, isByePlayer1, isByeP
       {/* Match header */}
       <div className="px-3 py-1.5 bg-white/5 rounded-t-xl border-b border-white/10 flex items-center justify-between">
         <span className="text-xs font-medium text-white/40">
-          Round {match.round}
+          {match.isBronzeMatch ? "3rd Place" : `Round ${match.round}`}
         </span>
         {match.isComplete && !isBye && (
           <span className="text-xs font-bold text-lime-400 flex items-center gap-1">
@@ -358,11 +358,20 @@ export default function Bracket() {
   }
 
   // Group matches by round - filter out any BYE matches (where one player is null and match is complete)
+  // Also separate bronze matches from regular final round matches
   const matchesByRound: { [key: number]: Match[] } = {};
+  const bronzeMatches: Match[] = [];
+  
   tournament.matches.forEach((match) => {
     // Skip BYE matches - they have one null player and are already complete
     const isByeMatch = (match.player1 === null || match.player2 === null) && match.isComplete;
     if (isByeMatch) return;
+    
+    // Separate bronze matches
+    if (match.isBronzeMatch) {
+      bronzeMatches.push(match);
+      return;
+    }
     
     if (!matchesByRound[match.round]) {
       matchesByRound[match.round] = [];
@@ -370,10 +379,17 @@ export default function Bracket() {
     matchesByRound[match.round].push(match);
   });
 
-  const roundNames = (round: number, totalRounds: number, matchCount: number) => {
-    if (round === totalRounds) return "🏆 FINALS";
+  // Check if this is a 6-player playoff bracket (has bronze match)
+  const hasBronzeMatch = tournament.matches.some(m => m.isBronzeMatch);
+  const bronzeMatch = tournament.matches.find(m => m.isBronzeMatch);
+
+  const roundNames = (round: number, totalRounds: number, matchCount: number, isBronze: boolean = false) => {
+    if (isBronze) return "🥉 BRONZE MATCH";
+    if (round === totalRounds && !isBronze) return "🏆 CHAMPIONSHIP";
+    if (round === totalRounds - 1 && hasBronzeMatch) return "SEMIFINALS";
     if (matchCount === 2) return "SEMIFINALS";
     if (matchCount === 4) return "QUARTERFINALS";
+    if (hasBronzeMatch && round === 1) return "QUARTERFINALS"; // 6-player bracket
     return `ROUND ${round}`;
   };
 
@@ -491,6 +507,28 @@ export default function Bracket() {
             );
           })}
         </div>
+        
+        {/* Bronze Match Section - displayed below if present */}
+        {bronzeMatches.length > 0 && (
+          <div className="mt-12 border-t border-white/10 pt-8">
+            <div className="flex flex-col items-center">
+              <h3 className="text-center text-orange-400 font-semibold text-sm uppercase tracking-wider mb-4">
+                🥉 3RD PLACE MATCH
+              </h3>
+              <p className="text-white/40 text-xs mb-4">Semifinal losers compete for bronze</p>
+              {bronzeMatches.map((match) => (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  onScoreClick={setSelectedMatch}
+                  gameTimerMinutes={tournament.settings.gameTimerMinutes}
+                  isByePlayer1={false}
+                  isByePlayer2={false}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedMatch && (
