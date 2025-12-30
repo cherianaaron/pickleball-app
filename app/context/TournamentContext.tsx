@@ -62,6 +62,7 @@ interface TournamentContextType {
   resetMatchTimer: (matchId: string) => Promise<void>;
   getUserSettingsPreference: () => TournamentSettings;
   saveUserSettingsPreference: (settings: TournamentSettings) => void;
+  clearError: () => void;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -142,6 +143,10 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
 
   const dismissWinnerCelebration = useCallback(() => {
     setShowWinnerCelebration(false);
+  }, []);
+
+  const clearError = useCallback(() => {
+    setError(null);
   }, []);
 
   // Helper function to reload current tournament data
@@ -690,9 +695,15 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         champion: null,
         settings: userSettings,
       });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error resetting tournament:", err);
-      setError(err instanceof Error ? err.message : "Failed to reset tournament");
+      // Show detailed error for debugging
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : typeof err === 'object' && err !== null && 'message' in err 
+          ? String((err as { message: unknown }).message)
+          : "Failed to reset tournament";
+      setError(`Failed to create tournament: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -926,6 +937,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         resetMatchTimer,
         getUserSettingsPreference: getUserSettings,
         saveUserSettingsPreference: saveUserSettings,
+        clearError,
       }}
     >
       {children}

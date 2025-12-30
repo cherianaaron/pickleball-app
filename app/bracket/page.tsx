@@ -11,11 +11,18 @@ import { useTournament } from "../context/TournamentContext";
 import { useAuth } from "../context/AuthContext";
 
 function BracketPageContent() {
-  const { tournament, loading, error, resetTournament, loadTournamentById } = useTournament();
+  const { tournament, loading, error, resetTournament, loadTournamentById, clearError } = useTournament();
   const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // Clear any previous errors when the page loads
+  useEffect(() => {
+    if (error) {
+      clearError();
+    }
+  }, []);
 
   // Check if current user is the owner of the tournament
   const isOwner = tournament && user && tournament.userId === user.id;
