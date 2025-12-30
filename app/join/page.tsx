@@ -75,7 +75,10 @@ export default function JoinTournamentPage() {
             user_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Anonymous",
           });
 
-        if (joinError) throw joinError;
+        if (joinError) {
+          console.error("Join error:", joinError);
+          throw new Error(`Failed to join: ${joinError.message}`);
+        }
 
         setSuccess(`Successfully joined "${bracketTournament.name}"!`);
         setTimeout(() => router.push(`/bracket?tournament=${bracketTournament.id}`), 1500);
@@ -133,9 +136,14 @@ export default function JoinTournamentPage() {
 
       // No tournament found
       setError("Invalid invite code. Please check and try again.");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error joining tournament:", err);
-      setError(err instanceof Error ? err.message : "Failed to join tournament");
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : typeof err === 'object' && err !== null && 'message' in err 
+          ? String((err as { message: unknown }).message)
+          : "Failed to join tournament";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
