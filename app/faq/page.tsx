@@ -186,11 +186,9 @@ export default function FAQPage() {
             <h4 className="text-white font-semibold mb-2">💡 Automatic Playoff Bracket</h4>
             <p>After completing all pool play matches, click <strong className="text-lime-400">Start Playoffs →</strong> to automatically:</p>
             <ul className="list-disc list-inside space-y-1 ml-2 mt-2">
-              <li>Create a new bracket tournament named &quot;[Your Tournament] - Playoffs&quot;</li>
+              <li>Create a new bracket tournament</li>
               <li>Import the top 6 teams with proper seeding (1st place = Seed 1, etc.)</li>
-              <li>Redirect you to the bracket page ready to generate and play!</li>
             </ul>
-            <p className="mt-2 text-lime-400/80 text-sm">✨ No manual entry needed - everything is handled automatically!</p>
           </div>
 
           <p className="mt-4 text-lime-400/80 text-sm">
