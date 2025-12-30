@@ -418,6 +418,59 @@ export default function FAQPage() {
       ),
     },
     {
+      id: "join-tournament",
+      icon: "🤝",
+      title: "Joining & Sharing Tournaments",
+      content: (
+        <>
+          <p>
+            <strong className="text-white">Collaborate with others!</strong> PickleBracket allows you to share your tournaments so multiple people can view and enter scores together in real-time.
+          </p>
+
+          <div className="bg-gradient-to-r from-orange-400/10 to-yellow-400/10 rounded-xl p-4 mt-4 border border-orange-400/20">
+            <h4 className="text-orange-400 font-semibold mb-2">📤 Sharing Your Tournament (For Hosts)</h4>
+            <ol className="list-decimal list-inside space-y-2 ml-2">
+              <li>Start a <strong className="text-white">Bracket</strong> or <strong className="text-white">Round Robin</strong> tournament</li>
+              <li>Look for the <strong className="text-orange-400">🤝 Share</strong> button in the tournament stats bar</li>
+              <li>Click <strong className="text-white">Generate Invite Code</strong> to create a unique 6-character code</li>
+              <li>Share the code with your friends (e.g., <span className="font-mono bg-white/10 px-2 py-0.5 rounded">ABC123</span>)</li>
+              <li>You can also copy a direct join link to share</li>
+            </ol>
+          </div>
+
+          <div className="bg-gradient-to-r from-lime-400/10 to-emerald-400/10 rounded-xl p-4 mt-4 border border-lime-400/20">
+            <h4 className="text-lime-400 font-semibold mb-2">📥 Joining a Tournament (For Collaborators)</h4>
+            <ol className="list-decimal list-inside space-y-2 ml-2">
+              <li><strong className="text-white">Sign in</strong> to your PickleBracket account</li>
+              <li>Click <strong className="text-white">Join</strong> in the navigation bar</li>
+              <li>Enter the <strong className="text-orange-400">invite code</strong> shared by the tournament host</li>
+              <li>Click <strong className="text-lime-400">Join Tournament</strong></li>
+              <li>You&apos;ll be taken directly to the tournament!</li>
+            </ol>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 mt-4">
+            <h4 className="text-white font-semibold mb-2">What Collaborators Can Do</h4>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>View the tournament bracket or pool play matches</li>
+              <li>Enter scores for any match</li>
+              <li>See real-time updates when others enter scores</li>
+              <li>Access the tournament from their History page (marked as &quot;Joined&quot;)</li>
+            </ul>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 mt-4">
+            <h4 className="text-white font-semibold mb-2">💡 Real-Time Sync</h4>
+            <p>When anyone updates a score, all collaborators see the change <strong className="text-lime-400">instantly</strong> - no need to refresh the page!</p>
+          </div>
+
+          <p className="mt-4 text-white/60 text-sm">
+            <strong>Note:</strong> You must be signed in to join a tournament. The tournament host remains the owner and can see all collaborators in the Share menu.
+          </p>
+        </>
+      ),
+    },
+    {
       id: "tips",
       icon: "💡",
       title: "Tips & Best Practices",
