@@ -126,7 +126,7 @@ export default function Navigation() {
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="inline-flex items-center h-9 px-3 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
+                    className="inline-flex items-center h-9 pl-3 pr-4 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
                   >
                     {getUserAvatar() ? (
                       <img 
@@ -139,10 +139,10 @@ export default function Navigation() {
                         {getUserDisplayName().charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="text-white text-sm font-medium whitespace-nowrap mr-2">
+                    <span className="text-white text-sm font-medium whitespace-nowrap">
                       {getUserDisplayName()}
                     </span>
-                    <span className={`text-white/60 text-xs transition-transform duration-300 ${showUserMenu ? "rotate-180" : ""}`}>▼</span>
+                    <span className={`text-white/60 text-xs transition-transform duration-300 ml-3 ${showUserMenu ? "rotate-180" : ""}`}>▼</span>
                   </button>
 
                   {/* User Dropdown */}
