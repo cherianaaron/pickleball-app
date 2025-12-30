@@ -127,43 +127,45 @@ export default function HistoryPage() {
         return;
       }
 
-      // Fetch owned tournaments and joined tournaments in parallel
-      const [ownedResult, collabResult] = await Promise.all([
-        supabase
-          .from("tournaments")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(50),
-        supabase
+      // Fetch owned tournaments
+      const { data: ownedData, error: ownedError } = await supabase
+        .from("tournaments")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (ownedError) throw ownedError;
+
+      // Try to fetch joined tournaments (table might not exist yet)
+      let joinedTournaments: typeof ownedData = [];
+      try {
+        const { data: collabData } = await supabase
           .from("tournament_collaborators")
           .select("tournament_id")
-          .eq("user_id", user.id)
-      ]);
+          .eq("user_id", user.id);
 
-      if (ownedResult.error) throw ownedResult.error;
-
-      // Get joined tournament IDs
-      const joinedTournamentIds = (collabResult.data || []).map(c => c.tournament_id);
-      
-      // Fetch joined tournaments if any
-      let joinedTournaments: typeof ownedResult.data = [];
-      if (joinedTournamentIds.length > 0) {
-        const { data, error } = await supabase
-          .from("tournaments")
-          .select("*")
-          .in("id", joinedTournamentIds)
-          .order("created_at", { ascending: false });
+        const joinedTournamentIds = (collabData || []).map(c => c.tournament_id);
         
-        if (!error && data) {
-          joinedTournaments = data;
+        if (joinedTournamentIds.length > 0) {
+          const { data } = await supabase
+            .from("tournaments")
+            .select("*")
+            .in("id", joinedTournamentIds)
+            .order("created_at", { ascending: false });
+          
+          if (data) {
+            joinedTournaments = data;
+          }
         }
+      } catch {
+        // Collaborators table might not exist yet - ignore
       }
 
       // Combine and dedupe (owned takes priority)
-      const ownedIds = new Set((ownedResult.data || []).map(t => t.id));
+      const ownedIds = new Set((ownedData || []).map(t => t.id));
       const allTournaments = [
-        ...(ownedResult.data || []).map(t => ({ ...t, isCollaborator: false })),
+        ...(ownedData || []).map(t => ({ ...t, isCollaborator: false })),
         ...joinedTournaments.filter(t => !ownedIds.has(t.id)).map(t => ({ ...t, isCollaborator: true }))
       ];
 

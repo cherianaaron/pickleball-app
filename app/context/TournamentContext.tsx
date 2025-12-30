@@ -144,33 +144,6 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     setShowWinnerCelebration(false);
   }, []);
 
-  // Real-time subscription for live score updates
-  useEffect(() => {
-    if (!tournament?.id) return;
-
-    // Subscribe to match updates for the current tournament
-    const channel = supabase
-      .channel(`tournament-${tournament.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "matches",
-          filter: `tournament_id=eq.${tournament.id}`,
-        },
-        () => {
-          // Reload tournament data when any match is updated
-          reloadCurrentTournament(tournament.id);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [tournament?.id]);
-
   // Helper function to reload current tournament data
   const reloadCurrentTournament = async (tournamentId: string) => {
     try {
@@ -261,6 +234,32 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       throw err;
     }
   };
+
+  // Real-time subscription for live score updates from collaborators
+  useEffect(() => {
+    if (!tournament?.id) return;
+
+    const channel = supabase
+      .channel(`tournament-${tournament.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "matches",
+          filter: `tournament_id=eq.${tournament.id}`,
+        },
+        () => {
+          // Reload tournament data when any match is updated by a collaborator
+          reloadCurrentTournament(tournament.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tournament?.id]);
 
   const addPlayer = useCallback(async (name: string) => {
     if (!name.trim() || !tournament) return;
