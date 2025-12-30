@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import Bracket from "../components/Bracket";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import ShareTournament from "../components/ShareTournament";
 import { useTournament } from "../context/TournamentContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -14,6 +15,10 @@ function BracketPageContent() {
   const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Check if current user is the owner of the tournament
+  const isOwner = tournament && user && tournament.userId === user.id;
 
   // Handle ?tournament=<id> query parameter (e.g., from Round Robin playoffs)
   useEffect(() => {
@@ -146,6 +151,16 @@ function BracketPageContent() {
                 <span className="text-lime-400 font-bold">{tournament.champion.name}</span>
               </div>
             )}
+            {/* Share Button */}
+            {user && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="glass rounded-xl px-4 py-2 flex items-center gap-2 hover:bg-white/10 transition-all border border-orange-400/30 hover:border-orange-400/50"
+              >
+                <span className="text-orange-400">🤝</span>
+                <span className="text-white/70 text-sm">Share</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -202,6 +217,16 @@ function BracketPageContent() {
           </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && tournament && (
+        <ShareTournament
+          tournamentId={tournament.id}
+          tournamentType="bracket"
+          isOwner={isOwner || false}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

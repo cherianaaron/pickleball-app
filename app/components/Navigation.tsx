@@ -19,6 +19,7 @@ export default function Navigation() {
     { href: "/round-robin", label: "Round Robin", icon: "🔄" },
     { href: "/bracket", label: "Bracket", icon: "🏆" },
     { href: "/history", label: "History", icon: "📜" },
+    { href: "/join", label: "Join", icon: "🤝" },
     { href: "/faq", label: "How It Works", icon: "📖" },
     { href: "/settings", label: "Settings", icon: "⚙️" },
   ];

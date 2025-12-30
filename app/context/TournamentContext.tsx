@@ -33,6 +33,7 @@ export interface TournamentSettings {
 export interface Tournament {
   id: string;
   name: string;
+  userId: string | null;
   players: Player[];
   matches: Match[];
   rounds: number;
@@ -143,6 +144,33 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     setShowWinnerCelebration(false);
   }, []);
 
+  // Real-time subscription for live score updates
+  useEffect(() => {
+    if (!tournament?.id) return;
+
+    // Subscribe to match updates for the current tournament
+    const channel = supabase
+      .channel(`tournament-${tournament.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "matches",
+          filter: `tournament_id=eq.${tournament.id}`,
+        },
+        () => {
+          // Reload tournament data when any match is updated
+          reloadCurrentTournament(tournament.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tournament?.id]);
+
   // Helper function to reload current tournament data
   const reloadCurrentTournament = async (tournamentId: string) => {
     try {
@@ -219,6 +247,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       setTournament({
         id: tournamentData.id,
         name: tournamentData.name,
+        userId: tournamentData.user_id || null,
         players: players?.map((p: { id: string; name: string; seed: number }) => ({ id: p.id, name: p.name, seed: p.seed })) || [],
         matches: transformedMatches,
         rounds: tournamentData.rounds || 0,
@@ -653,6 +682,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       setTournament({
         id: newTournament.id,
         name: newTournament.name,
+        userId: user.id,
         players: [],
         matches: [],
         rounds: 0,
@@ -859,6 +889,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       setTournament({
         id: tournamentData.id,
         name: tournamentData.name,
+        userId: tournamentData.user_id || null,
         players: players?.map((p: { id: string; name: string; seed: number }) => ({ id: p.id, name: p.name, seed: p.seed })) || [],
         matches: transformedMatches,
         rounds: tournamentData.rounds || 0,

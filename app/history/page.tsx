@@ -19,6 +19,7 @@ interface TournamentSummary {
   matchCount: number;
   championName: string | null;
   createdAt: string;
+  isCollaborator?: boolean;
 }
 
 interface Player {
@@ -119,34 +120,60 @@ export default function HistoryPage() {
       setLoading(true);
       setError(null);
 
-      // Build query - filter by user_id if logged in
-      let query = supabase
-        .from("tournaments")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50); // Limit to most recent 50 tournaments
-
-      // Filter by user's tournaments if logged in
-      if (user) {
-        query = query.eq("user_id", user.id);
-      } else {
+      if (!user) {
         // If not logged in, show nothing (user must login to see their history)
         setTournaments([]);
         setLoading(false);
         return;
       }
 
-      const { data: tournamentsData, error: tournamentError } = await query;
+      // Fetch owned tournaments and joined tournaments in parallel
+      const [ownedResult, collabResult] = await Promise.all([
+        supabase
+          .from("tournaments")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("tournament_collaborators")
+          .select("tournament_id")
+          .eq("user_id", user.id)
+      ]);
 
-      if (tournamentError) throw tournamentError;
+      if (ownedResult.error) throw ownedResult.error;
 
-      if (!tournamentsData || tournamentsData.length === 0) {
+      // Get joined tournament IDs
+      const joinedTournamentIds = (collabResult.data || []).map(c => c.tournament_id);
+      
+      // Fetch joined tournaments if any
+      let joinedTournaments: typeof ownedResult.data = [];
+      if (joinedTournamentIds.length > 0) {
+        const { data, error } = await supabase
+          .from("tournaments")
+          .select("*")
+          .in("id", joinedTournamentIds)
+          .order("created_at", { ascending: false });
+        
+        if (!error && data) {
+          joinedTournaments = data;
+        }
+      }
+
+      // Combine and dedupe (owned takes priority)
+      const ownedIds = new Set((ownedResult.data || []).map(t => t.id));
+      const allTournaments = [
+        ...(ownedResult.data || []).map(t => ({ ...t, isCollaborator: false })),
+        ...joinedTournaments.filter(t => !ownedIds.has(t.id)).map(t => ({ ...t, isCollaborator: true }))
+      ];
+
+      if (allTournaments.length === 0) {
         setTournaments([]);
         return;
       }
 
       // Get all tournament IDs
-      const tournamentIds = tournamentsData.map(t => t.id);
+      const tournamentIds = allTournaments.map(t => t.id);
 
       // Batch fetch all players and matches in parallel (much faster than N+1 queries)
       const [playersResult, matchesResult] = await Promise.all([
@@ -175,7 +202,7 @@ export default function HistoryPage() {
       });
 
       // Build summaries using the pre-fetched data
-      const summaries: TournamentSummary[] = tournamentsData.map(t => ({
+      const summaries: TournamentSummary[] = allTournaments.map(t => ({
         id: t.id,
         name: t.name,
         isStarted: t.is_started,
@@ -185,6 +212,7 @@ export default function HistoryPage() {
         matchCount: matchCountMap.get(t.id) || 0,
         championName: t.champion_id ? playerNameMap.get(t.champion_id) || null : null,
         createdAt: t.created_at,
+        isCollaborator: t.isCollaborator,
       }));
 
       setTournaments(summaries);
@@ -385,7 +413,14 @@ export default function HistoryPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-white truncate">{t.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-white truncate">{t.name}</h3>
+                            {t.isCollaborator && (
+                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-400/20 text-orange-400 border border-orange-400/30">
+                                Joined
+                              </span>
+                            )}
+                          </div>
                           <p className="text-white/40 text-xs mt-1">{formatDate(t.createdAt)}</p>
                         </div>
                         <div className="flex-shrink-0">

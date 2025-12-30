@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
+import ShareTournament from "../components/ShareTournament";
 
 interface Team {
   id: string;
@@ -85,6 +86,10 @@ export default function RoundRobinPage() {
   
   // Tournament ID for persistence
   const [tournamentId, setTournamentId] = useState<string | null>(null);
+  const [rrTournamentUserId, setRrTournamentUserId] = useState<string | null>(null);
+  
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // LocalStorage key for active round robin tournament
   const ACTIVE_RR_KEY = "activeRoundRobinTournamentId";
@@ -103,6 +108,7 @@ export default function RoundRobinPage() {
       
       if (tournament) {
         setTournamentId(tournament.id);
+        setRrTournamentUserId(tournament.user_id || null);
         setTournamentName(tournament.name);
         setScoreLimit(tournament.score_limit || 11);
         setNumCourts(tournament.num_courts || 3);
@@ -420,6 +426,7 @@ export default function RoundRobinPage() {
       if (tournamentError) throw tournamentError;
       
       setTournamentId(tournament.id);
+      setRrTournamentUserId(user?.id || null);
       
       // Create pools
       for (const pool of generatedPools) {
@@ -1065,6 +1072,16 @@ export default function RoundRobinPage() {
                     {completedMatches}/{totalMatches} matches complete • {totalRounds} rounds
                   </p>
                 </div>
+                {/* Share Button */}
+                {user && tournamentId && (
+                  <button
+                    onClick={() => setShowShareModal(true)}
+                    className="glass rounded-xl px-4 py-2 flex items-center gap-2 hover:bg-white/10 transition-all border border-orange-400/30 hover:border-orange-400/50"
+                  >
+                    <span className="text-orange-400">🤝</span>
+                    <span className="text-white/70 text-sm">Share</span>
+                  </button>
+                )}
                 <div className="flex gap-2">
                   {poolA && (
                     <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm border border-blue-500/30">
@@ -1593,6 +1610,16 @@ export default function RoundRobinPage() {
           </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && tournamentId && (
+        <ShareTournament
+          tournamentId={tournamentId}
+          tournamentType="round-robin"
+          isOwner={rrTournamentUserId === user?.id}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }
