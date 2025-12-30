@@ -126,7 +126,7 @@ export default function Navigation() {
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="inline-flex items-center h-9 pl-3 pr-6 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
+                    className="inline-flex items-center h-9 pl-3 pr-7 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
                   >
                     {getUserAvatar() ? (
                       <img 
