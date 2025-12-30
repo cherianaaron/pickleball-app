@@ -31,11 +31,16 @@ export default function JoinTournamentPage() {
 
     try {
       // Try to find bracket tournament with this code
-      const { data: bracketTournament } = await supabase
+      const { data: bracketTournament, error: bracketError } = await supabase
         .from("tournaments")
         .select("id, name, user_id")
         .eq("invite_code", code)
         .single();
+
+      if (bracketError && bracketError.code !== "PGRST116") {
+        // PGRST116 = no rows found (expected if code doesn't exist)
+        console.error("Error finding tournament:", bracketError);
+      }
 
       if (bracketTournament) {
         // Check if user is already the owner
