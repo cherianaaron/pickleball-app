@@ -529,8 +529,9 @@ export default function RoundRobinPage() {
         ),
       }));
       
+      // Only check matches with courts assigned (exclude waiting matches)
       const allComplete = updatedPools.every(pool =>
-        pool.matches.every(m => m.isComplete || m.id === selectedMatch.id)
+        pool.matches.every(m => m.court === null || m.isComplete || m.id === selectedMatch.id)
       );
       
       if (allComplete) {
@@ -772,8 +773,9 @@ export default function RoundRobinPage() {
     );
   }
 
-  const completedMatches = pools.reduce((acc, pool) => acc + pool.matches.filter(m => m.isComplete).length, 0);
-  const totalMatches = pools.reduce((acc, pool) => acc + pool.matches.length, 0);
+  // Only count matches that have a court assigned (exclude waiting matches)
+  const completedMatches = pools.reduce((acc, pool) => acc + pool.matches.filter(m => m.isComplete && m.court !== null).length, 0);
+  const totalMatches = pools.reduce((acc, pool) => acc + pool.matches.filter(m => m.court !== null).length, 0);
   
   // Calculate total rounds (max rounds across both pools)
   const poolA = pools.find(p => p.name === "Pool A");
