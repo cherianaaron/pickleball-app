@@ -139,7 +139,7 @@ export default function Navigation() {
                         {getUserDisplayName().charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="text-white text-sm font-medium max-w-[100px] truncate">
+                    <span className="text-white text-sm font-medium max-w-[150px] truncate">
                       {getUserDisplayName()}
                     </span>
                     <span className={`text-white/60 text-xs transition-transform duration-300 ${showUserMenu ? "rotate-180" : ""}`}>
