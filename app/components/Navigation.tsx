@@ -126,23 +126,23 @@ export default function Navigation() {
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
+                    className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
                   >
                     {getUserAvatar() ? (
                       <img 
                         src={getUserAvatar()!} 
                         alt={getUserDisplayName()} 
-                        className="w-6 h-6 rounded-full"
+                        className="w-7 h-7 rounded-full"
                       />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-lime-400 flex items-center justify-center text-emerald-900 text-xs font-bold">
+                      <div className="w-7 h-7 rounded-full bg-lime-400 flex items-center justify-center text-emerald-900 text-xs font-bold">
                         {getUserDisplayName().charAt(0).toUpperCase()}
                       </div>
                     )}
                     <span className="text-white text-sm font-medium whitespace-nowrap">
                       {getUserDisplayName()}
                     </span>
-                    <span className={`text-white/60 text-xs transition-transform duration-300 ${showUserMenu ? "rotate-180" : ""}`}>
+                    <span className={`text-white/60 text-xs transition-transform duration-300 ml-1 ${showUserMenu ? "rotate-180" : ""}`}>
                       ▼
                     </span>
                   </button>
