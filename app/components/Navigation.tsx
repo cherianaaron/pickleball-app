@@ -142,7 +142,7 @@ export default function Navigation() {
                     <span className="text-white text-sm font-medium whitespace-nowrap">
                       {getUserDisplayName()}
                     </span>
-                    <span className={`text-white/60 text-xs transition-transform duration-300 ml-1 ${showUserMenu ? "rotate-180" : ""}`}>▼</span>
+                    <span className={`text-white/60 text-xs transition-transform duration-300 ml-5 ${showUserMenu ? "rotate-180" : ""}`}>▼</span>
                   </button>
 
                   {/* User Dropdown */}
