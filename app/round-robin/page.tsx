@@ -186,14 +186,34 @@ export default function RoundRobinPage() {
     }
   };
 
-  // Auto-load active tournament on mount
+  // Auto-load active tournament on mount (only if logged in)
   useEffect(() => {
-    const savedTournamentId = localStorage.getItem(ACTIVE_RR_KEY);
-    if (savedTournamentId) {
-      loadTournamentById(savedTournamentId);
+    // Only load saved tournament if user is logged in
+    if (user && !authLoading) {
+      const savedTournamentId = localStorage.getItem(ACTIVE_RR_KEY);
+      if (savedTournamentId) {
+        loadTournamentById(savedTournamentId);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user, authLoading]);
+
+  // Clear state when user signs out
+  useEffect(() => {
+    if (!user && !authLoading) {
+      // User signed out - clear tournament state
+      setTournamentId(null);
+      setTeams([]);
+      setPools([]);
+      setStandings([]);
+      setPlayoffTeams([]);
+      setPhase("setup");
+      setActiveRound(1);
+      setSelectedMatch(null);
+      // Clear localStorage
+      localStorage.removeItem(ACTIVE_RR_KEY);
+    }
+  }, [user, authLoading]);
 
   // Save tournament ID to localStorage when it changes
   useEffect(() => {
