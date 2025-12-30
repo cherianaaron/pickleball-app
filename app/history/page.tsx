@@ -137,37 +137,7 @@ export default function HistoryPage() {
 
       if (ownedError) throw ownedError;
 
-      // Try to fetch joined tournaments (table might not exist yet)
-      let joinedTournaments: typeof ownedData = [];
-      try {
-        const { data: collabData } = await supabase
-          .from("tournament_collaborators")
-          .select("tournament_id")
-          .eq("user_id", user.id);
-
-        const joinedTournamentIds = (collabData || []).map(c => c.tournament_id);
-        
-        if (joinedTournamentIds.length > 0) {
-          const { data } = await supabase
-            .from("tournaments")
-            .select("*")
-            .in("id", joinedTournamentIds)
-            .order("created_at", { ascending: false });
-          
-          if (data) {
-            joinedTournaments = data;
-          }
-        }
-      } catch {
-        // Collaborators table might not exist yet - ignore
-      }
-
-      // Combine and dedupe (owned takes priority)
-      const ownedIds = new Set((ownedData || []).map(t => t.id));
-      const allTournaments = [
-        ...(ownedData || []).map(t => ({ ...t, isCollaborator: false })),
-        ...joinedTournaments.filter(t => !ownedIds.has(t.id)).map(t => ({ ...t, isCollaborator: true }))
-      ];
+      const allTournaments = (ownedData || []).map(t => ({ ...t, isCollaborator: false }));
 
       if (allTournaments.length === 0) {
         setTournaments([]);
