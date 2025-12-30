@@ -183,17 +183,17 @@ export default function PlayersPage() {
           <div className="mt-12 glass rounded-2xl p-6 text-center">
             <p className="text-white/60 mb-2">
               With <span className="text-lime-400 font-bold">{tournament.players.length}</span> players, 
-              you&apos;ll have a bracket of{" "}
+              you&apos;ll have{" "}
               <span className="text-lime-400 font-bold">
-                {Math.pow(2, Math.ceil(Math.log2(tournament.players.length)))}
+                {Math.floor(tournament.players.length / 2)}
               </span>{" "}
-              slots
+              matches in Round 1
             </p>
             <p className="text-white/40 text-sm">
-              {Math.pow(2, Math.ceil(Math.log2(tournament.players.length))) - tournament.players.length > 0 && (
-                <>
-                  {Math.pow(2, Math.ceil(Math.log2(tournament.players.length))) - tournament.players.length} player(s) will receive a bye in round 1
-                </>
+              {tournament.players.length % 2 === 1 ? (
+                <>1 player will receive a bye in Round 1</>
+              ) : (
+                <>All players compete in Round 1 - no byes!</>
               )}
             </p>
           </div>
