@@ -492,6 +492,10 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       if (!match || !match.player1 || !match.player2) return;
 
       const winner = score1 > score2 ? match.player1 : match.player2;
+      const loser = score1 > score2 ? match.player2 : match.player1;
+      const previousWinner = match.winner;
+      const isEditingScore = match.isComplete && previousWinner;
+      const winnerChanged = isEditingScore && previousWinner.id !== winner.id;
 
       // Update the match
       const { error: updateError } = await supabase
@@ -513,27 +517,33 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         const matchIndexInRound = currentRoundMatches.findIndex((m) => m.id === matchId);
         
         // Check if this winner should get a bye (skip next round)
-        // A bye only happens when:
-        // 1. Current round has odd number of matches
-        // 2. This is the last match in the round
-        // 3. The next round has fewer matches than would be needed for normal bracket flow
-        //    (i.e., next round matches * 2 < current round matches)
         const isOddCurrentRound = currentRoundMatches.length % 2 === 1;
         const isLastMatchInOddRound = isOddCurrentRound && matchIndexInRound === currentRoundMatches.length - 1;
         const roundAfterNext = tournament.matches.filter((m) => m.round === match.round + 2);
         
-        // Only give a bye if there's actually a round after next to advance to
-        // AND the next round can't accommodate all winners normally
         const shouldGetBye = isLastMatchInOddRound && 
                              roundAfterNext.length > 0 && 
                              nextRoundMatches.length * 2 < currentRoundMatches.length;
         
         if (shouldGetBye) {
-          // This winner has a bye - they skip the next round and go to the round after
-          // Place in the last match of that round
           const targetMatch = roundAfterNext[roundAfterNext.length - 1];
           
-          // Fetch fresh state of the target match to see which slot is available
+          // If editing and winner changed, remove the OLD winner from target match first
+          if (winnerChanged) {
+            const { data: freshTarget } = await supabase
+              .from("matches")
+              .select("player1_id, player2_id")
+              .eq("id", targetMatch.id)
+              .single();
+            
+            if (freshTarget?.player1_id === previousWinner.id) {
+              await supabase.from("matches").update({ player1_id: null }).eq("id", targetMatch.id);
+            } else if (freshTarget?.player2_id === previousWinner.id) {
+              await supabase.from("matches").update({ player2_id: null }).eq("id", targetMatch.id);
+            }
+          }
+          
+          // Place new winner
           const { data: freshTargetMatch } = await supabase
             .from("matches")
             .select("player1_id, player2_id")
@@ -546,22 +556,34 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
             .update({ [slotToFill]: winner.id })
             .eq("id", targetMatch.id);
         } else {
-          // Normal advancement - calculate next match position
+          // Normal advancement
           const effectiveIndex = matchIndexInRound;
           const nextMatchIndex = Math.floor(effectiveIndex / 2);
           const nextMatch = nextRoundMatches[nextMatchIndex];
           
           if (nextMatch) {
-            // Fetch fresh state of the next match to see which slot is actually available
-            // This is important because a bye player might have already filled a slot
+            // If editing and winner changed, remove the OLD winner from next match first
+            if (winnerChanged) {
+              const { data: freshNext } = await supabase
+                .from("matches")
+                .select("player1_id, player2_id")
+                .eq("id", nextMatch.id)
+                .single();
+              
+              if (freshNext?.player1_id === previousWinner.id) {
+                await supabase.from("matches").update({ player1_id: null }).eq("id", nextMatch.id);
+              } else if (freshNext?.player2_id === previousWinner.id) {
+                await supabase.from("matches").update({ player2_id: null }).eq("id", nextMatch.id);
+              }
+            }
+            
+            // Fetch fresh state and place new winner
             const { data: freshNextMatch } = await supabase
               .from("matches")
               .select("player1_id, player2_id")
               .eq("id", nextMatch.id)
               .single();
             
-            // Determine which slot to fill based on actual availability
-            // Prefer the slot based on match index, but use the other if it's taken
             const preferredField = effectiveIndex % 2 === 0 ? "player1_id" : "player2_id";
             const preferredSlotFilled = preferredField === "player1_id" 
               ? freshNextMatch?.player1_id !== null 
