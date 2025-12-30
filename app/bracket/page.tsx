@@ -7,9 +7,11 @@ import Bracket from "../components/Bracket";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { useTournament } from "../context/TournamentContext";
+import { useAuth } from "../context/AuthContext";
 
 function BracketPageContent() {
   const { tournament, loading, error, resetTournament, loadTournamentById } = useTournament();
+  const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
 
@@ -42,7 +44,7 @@ function BracketPageContent() {
     );
   }
 
-  // No active tournament - prompt user to create one
+  // No active tournament - prompt user to create one or sign in
   if (!tournament) {
     return (
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -52,23 +54,42 @@ function BracketPageContent() {
               <span className="text-4xl">🏆</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-4">No Active Bracket Tournament</h1>
-            <p className="text-white/60 mb-8">
-              Start a new bracket-style tournament or load an existing one from history.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={resetTournament}
-                className="px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
-              >
-                ➕ Create New Tournament
-              </button>
-              <Link
-                href="/history"
-                className="px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 transition-all duration-300"
-              >
-                📜 Load from History
-              </Link>
-            </div>
+            
+            {!user && !authLoading ? (
+              // Not logged in - prompt to sign in
+              <>
+                <p className="text-white/60 mb-8">
+                  Sign in to create and manage your bracket tournaments.
+                </p>
+                <Link
+                  href="/login?redirect=/bracket"
+                  className="inline-block px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+                >
+                  🔐 Sign In to Create Tournament
+                </Link>
+              </>
+            ) : (
+              // Logged in - show create/load options
+              <>
+                <p className="text-white/60 mb-8">
+                  Start a new bracket-style tournament or load an existing one from history.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={resetTournament}
+                    className="px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+                  >
+                    ➕ Create New Tournament
+                  </button>
+                  <Link
+                    href="/history"
+                    className="px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 transition-all duration-300"
+                  >
+                    📜 Load from History
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
