@@ -385,11 +385,18 @@ export default function Bracket() {
 
   const roundNames = (round: number, totalRounds: number, matchCount: number, isBronze: boolean = false) => {
     if (isBronze) return "🥉 BRONZE MATCH";
-    if (round === totalRounds && !isBronze) return "🏆 CHAMPIONSHIP";
-    if (round === totalRounds - 1 && hasBronzeMatch) return "SEMIFINALS";
+    
+    // Special handling for 6-player playoff bracket
+    if (hasBronzeMatch) {
+      if (round === 1) return "QUARTERFINALS";
+      if (round === 2) return "SEMIFINALS";
+      if (round === 3) return "🏆 CHAMPIONSHIP";
+    }
+    
+    // Standard bracket naming
+    if (round === totalRounds) return "🏆 FINALS";
     if (matchCount === 2) return "SEMIFINALS";
     if (matchCount === 4) return "QUARTERFINALS";
-    if (hasBronzeMatch && round === 1) return "QUARTERFINALS"; // 6-player bracket
     return `ROUND ${round}`;
   };
 

@@ -651,56 +651,21 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       // Find and update next round match
       const nextRoundMatches = tournament.matches.filter((m) => m.round === match.round + 1 && !m.isBronzeMatch);
       if (nextRoundMatches.length > 0) {
-        const currentRoundMatches = tournament.matches.filter((m) => m.round === match.round);
+        const currentRoundMatches = tournament.matches.filter((m) => m.round === match.round && !m.isBronzeMatch);
         const matchIndexInRound = currentRoundMatches.findIndex((m) => m.id === matchId);
         
-        // Check if this winner should get a bye (skip next round)
-        const isOddCurrentRound = currentRoundMatches.length % 2 === 1;
-        const isLastMatchInOddRound = isOddCurrentRound && matchIndexInRound === currentRoundMatches.length - 1;
-        const roundAfterNext = tournament.matches.filter((m) => m.round === match.round + 2);
+        // Check if this is a 6-player playoff bracket (has bronze match)
+        const is6PlayerPlayoff = tournament.matches.some(m => m.isBronzeMatch);
         
-        const shouldGetBye = isLastMatchInOddRound && 
-                             roundAfterNext.length > 0 && 
-                             nextRoundMatches.length * 2 < currentRoundMatches.length;
-        
-        if (shouldGetBye) {
-          const targetMatch = roundAfterNext[roundAfterNext.length - 1];
-          
-          // If editing and winner changed, remove the OLD winner from target match first
-          if (winnerChanged) {
-            const { data: freshTarget } = await supabase
-              .from("matches")
-              .select("player1_id, player2_id")
-              .eq("id", targetMatch.id)
-              .single();
-            
-            if (freshTarget?.player1_id === previousWinner.id) {
-              await supabase.from("matches").update({ player1_id: null }).eq("id", targetMatch.id);
-            } else if (freshTarget?.player2_id === previousWinner.id) {
-              await supabase.from("matches").update({ player2_id: null }).eq("id", targetMatch.id);
-            }
-          }
-          
-          // Place new winner
-          const { data: freshTargetMatch } = await supabase
-            .from("matches")
-            .select("player1_id, player2_id")
-            .eq("id", targetMatch.id)
-            .single();
-          
-          const slotToFill = freshTargetMatch?.player1_id === null ? "player1_id" : "player2_id";
-          await supabase
-            .from("matches")
-            .update({ [slotToFill]: winner.id })
-            .eq("id", targetMatch.id);
-        } else {
-          // Normal advancement
-          const effectiveIndex = matchIndexInRound;
-          const nextMatchIndex = Math.floor(effectiveIndex / 2);
-          const nextMatch = nextRoundMatches[nextMatchIndex];
+        // Special handling for 6-player playoff format (Round 1 = Quarterfinals)
+        // QF1 winner → SF2 (plays Seed 2), QF2 winner → SF1 (plays Seed 1)
+        if (is6PlayerPlayoff && match.round === 1 && currentRoundMatches.length === 2 && nextRoundMatches.length === 2) {
+          // Cross-matching: QF1 → SF2, QF2 → SF1
+          const targetMatchIndex = matchIndexInRound === 0 ? 1 : 0;
+          const nextMatch = nextRoundMatches[targetMatchIndex];
           
           if (nextMatch) {
-            // If editing and winner changed, remove the OLD winner from next match first
+            // If editing and winner changed, remove the OLD winner first
             if (winnerChanged) {
               const { data: freshNext } = await supabase
                 .from("matches")
@@ -715,26 +680,96 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
               }
             }
             
-            // Fetch fresh state and place new winner
-            const { data: freshNextMatch } = await supabase
-              .from("matches")
-              .select("player1_id, player2_id")
-              .eq("id", nextMatch.id)
-              .single();
-            
-            const preferredField = effectiveIndex % 2 === 0 ? "player1_id" : "player2_id";
-            const preferredSlotFilled = preferredField === "player1_id" 
-              ? freshNextMatch?.player1_id !== null 
-              : freshNextMatch?.player2_id !== null;
-            
-            const updateField = preferredSlotFilled 
-              ? (preferredField === "player1_id" ? "player2_id" : "player1_id")
-              : preferredField;
-            
+            // Always place in player2_id slot (player1_id has the bye player)
             await supabase
               .from("matches")
-              .update({ [updateField]: winner.id })
+              .update({ player2_id: winner.id })
               .eq("id", nextMatch.id);
+          }
+        } else {
+          // Standard bracket advancement logic
+          // Check if this winner should get a bye (skip next round)
+          const isOddCurrentRound = currentRoundMatches.length % 2 === 1;
+          const isLastMatchInOddRound = isOddCurrentRound && matchIndexInRound === currentRoundMatches.length - 1;
+          const roundAfterNext = tournament.matches.filter((m) => m.round === match.round + 2);
+          
+          const shouldGetBye = isLastMatchInOddRound && 
+                               roundAfterNext.length > 0 && 
+                               nextRoundMatches.length * 2 < currentRoundMatches.length;
+          
+          if (shouldGetBye) {
+            const targetMatch = roundAfterNext[roundAfterNext.length - 1];
+            
+            // If editing and winner changed, remove the OLD winner from target match first
+            if (winnerChanged) {
+              const { data: freshTarget } = await supabase
+                .from("matches")
+                .select("player1_id, player2_id")
+                .eq("id", targetMatch.id)
+                .single();
+              
+              if (freshTarget?.player1_id === previousWinner.id) {
+                await supabase.from("matches").update({ player1_id: null }).eq("id", targetMatch.id);
+              } else if (freshTarget?.player2_id === previousWinner.id) {
+                await supabase.from("matches").update({ player2_id: null }).eq("id", targetMatch.id);
+              }
+            }
+            
+            // Place new winner
+            const { data: freshTargetMatch } = await supabase
+              .from("matches")
+              .select("player1_id, player2_id")
+              .eq("id", targetMatch.id)
+              .single();
+            
+            const slotToFill = freshTargetMatch?.player1_id === null ? "player1_id" : "player2_id";
+            await supabase
+              .from("matches")
+              .update({ [slotToFill]: winner.id })
+              .eq("id", targetMatch.id);
+          } else {
+            // Normal advancement
+            const effectiveIndex = matchIndexInRound;
+            const nextMatchIndex = Math.floor(effectiveIndex / 2);
+            const nextMatch = nextRoundMatches[nextMatchIndex];
+            
+            if (nextMatch) {
+              // If editing and winner changed, remove the OLD winner from next match first
+              if (winnerChanged) {
+                const { data: freshNext } = await supabase
+                  .from("matches")
+                  .select("player1_id, player2_id")
+                  .eq("id", nextMatch.id)
+                  .single();
+                
+                if (freshNext?.player1_id === previousWinner.id) {
+                  await supabase.from("matches").update({ player1_id: null }).eq("id", nextMatch.id);
+                } else if (freshNext?.player2_id === previousWinner.id) {
+                  await supabase.from("matches").update({ player2_id: null }).eq("id", nextMatch.id);
+                }
+              }
+              
+              // Fetch fresh state and place new winner
+              const { data: freshNextMatch } = await supabase
+                .from("matches")
+                .select("player1_id, player2_id")
+                .eq("id", nextMatch.id)
+                .single();
+              
+              const preferredField = effectiveIndex % 2 === 0 ? "player1_id" : "player2_id";
+              const preferredSlotFilled = preferredField === "player1_id" 
+                ? freshNextMatch?.player1_id !== null 
+                : freshNextMatch?.player2_id !== null;
+              
+              const updateField = preferredSlotFilled 
+                ? (preferredField === "player1_id" ? "player2_id" : "player1_id")
+                : preferredField;
+              
+              await supabase
+                .from("matches")
+                .update({ [updateField]: winner.id })
+                .eq("id", nextMatch.id);
+            }
           }
         }
       }
