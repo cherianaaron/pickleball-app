@@ -357,14 +357,19 @@ export default function RoundRobinPage() {
     const maxRounds = Math.max(poolARounds, poolBRounds);
     
     // Assign court numbers within each round, respecting numCourts limit
+    // IMPORTANT: Alternate which pool goes first each round to distribute waiting fairly
     for (let round = 1; round <= maxRounds; round++) {
       let courtNum = 1;
       
-      // Get all matches for this round from both pools
-      const allMatchesInRound = [
-        ...poolAMatches.filter(m => m.round === round),
-        ...poolBMatches.filter(m => m.round === round),
-      ];
+      // Get matches for this round from both pools
+      const poolAMatchesInRound = poolAMatches.filter(m => m.round === round);
+      const poolBMatchesInRound = poolBMatches.filter(m => m.round === round);
+      
+      // Alternate priority: odd rounds = Pool A first, even rounds = Pool B first
+      // This ensures waiting matches are distributed fairly across both pools
+      const allMatchesInRound = round % 2 === 1
+        ? [...poolAMatchesInRound, ...poolBMatchesInRound]
+        : [...poolBMatchesInRound, ...poolAMatchesInRound];
       
       // Assign courts up to numCourts limit
       for (const match of allMatchesInRound) {
