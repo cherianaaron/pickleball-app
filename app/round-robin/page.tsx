@@ -493,9 +493,22 @@ export default function RoundRobinPage() {
       setPools(generatedPools);
       setActiveRound(1);
       setPhase("pool-play");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error starting pool play:", err);
-      setError(err instanceof Error ? err.message : "Failed to start pool play");
+      // Extract detailed error message
+      let errorMessage = "Failed to start pool play";
+      if (err && typeof err === 'object') {
+        if ('message' in err) {
+          errorMessage = String((err as { message: string }).message);
+        }
+        if ('details' in err) {
+          errorMessage += ` - ${String((err as { details: string }).details)}`;
+        }
+        if ('hint' in err) {
+          errorMessage += ` (${String((err as { hint: string }).hint)})`;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
