@@ -714,8 +714,9 @@ export default function RoundRobinPage() {
         });
       }
       
-      // Redirect to the bracket page with this tournament
-      router.push(`/bracket?tournament=${bracketTournament.id}`);
+      // Redirect to the players page to generate the bracket
+      // The players are already added, user just needs to click "Generate Bracket"
+      router.push(`/players?tournament=${bracketTournament.id}`);
     } catch (err) {
       console.error("Error starting playoffs:", err);
       setError(err instanceof Error ? err.message : "Failed to start playoffs");

@@ -1,15 +1,31 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import PlayerForm from "../components/PlayerForm";
 import PlayerList from "../components/PlayerList";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { useTournament } from "../context/TournamentContext";
 
-export default function PlayersPage() {
-  const { tournament, loading, error, generateBracket, setTournamentName, resetTournament } = useTournament();
+function PlayersPageContent() {
+  const { tournament, loading, error, generateBracket, setTournamentName, resetTournament, loadTournamentById } = useTournament();
+  const searchParams = useSearchParams();
+  const [loadingFromUrl, setLoadingFromUrl] = useState(false);
+
+  // Handle ?tournament=<id> query parameter (e.g., from Round Robin playoffs)
+  useEffect(() => {
+    const tournamentId = searchParams.get("tournament");
+    if (tournamentId && (!tournament || tournament.id !== tournamentId)) {
+      setLoadingFromUrl(true);
+      loadTournamentById(tournamentId).finally(() => {
+        setLoadingFromUrl(false);
+        // Clean up URL
+        window.history.replaceState({}, "", "/players");
+      });
+    }
+  }, [searchParams, tournament, loadTournamentById]);
   
   // Local state for tournament name with debounced save
   const [localName, setLocalName] = useState(tournament?.name || "");
@@ -46,10 +62,10 @@ export default function PlayersPage() {
     };
   }, []);
 
-  if (loading) {
+  if (loading || loadingFromUrl) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner message="Loading players..." />
+        <LoadingSpinner message={loadingFromUrl ? "Loading playoff teams..." : "Loading players..."} />
       </div>
     );
   }
@@ -200,6 +216,15 @@ export default function PlayersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Wrap in Suspense for useSearchParams
+export default function PlayersPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><LoadingSpinner message="Loading..." /></div>}>
+      <PlayersPageContent />
+    </Suspense>
   );
 }
 
