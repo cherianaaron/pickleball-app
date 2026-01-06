@@ -45,20 +45,28 @@ export default function ShareTournament({ tournamentId, tournamentType, isOwner,
     setLoading(true);
     try {
       // Get invite code
-      const { data: tournament } = await supabase
+      const { data: tournament, error: tournamentError } = await supabase
         .from(tableName)
         .select("invite_code")
         .eq("id", tournamentId)
-        .single();
+        .maybeSingle();
+
+      if (tournamentError) {
+        console.error("Error loading tournament for share:", tournamentError);
+      }
 
       setInviteCode(tournament?.invite_code || null);
 
       // Get collaborators
-      const { data: collabs } = await supabase
+      const { data: collabs, error: collabsError } = await supabase
         .from(collabTableName)
         .select("id, user_email, user_name, joined_at")
         .eq("tournament_id", tournamentId)
         .order("joined_at", { ascending: true });
+
+      if (collabsError) {
+        console.error("Error loading collaborators:", collabsError);
+      }
 
       setCollaborators(collabs || []);
     } catch (err) {
@@ -79,7 +87,11 @@ export default function ShareTournament({ tournamentId, tournamentType, isOwner,
         .update({ invite_code: newCode, allow_collaborators: true })
         .eq("id", tournamentId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating invite code:", error);
+        alert(`Failed to generate code: ${error.message}`);
+        return;
+      }
       setInviteCode(newCode);
     } catch (err) {
       console.error("Error generating invite code:", err);

@@ -31,15 +31,15 @@ export default function JoinTournamentPage() {
 
     try {
       // Try to find bracket tournament with this code
+      // Use maybeSingle() to avoid error when no rows found
       const { data: bracketTournament, error: bracketError } = await supabase
         .from("tournaments")
         .select("id, name, user_id")
         .eq("invite_code", code)
-        .single();
+        .maybeSingle();
 
-      if (bracketError && bracketError.code !== "PGRST116") {
-        // PGRST116 = no rows found (expected if code doesn't exist)
-        console.error("Error finding tournament:", bracketError);
+      if (bracketError) {
+        console.error("Error finding bracket tournament:", bracketError);
       }
 
       if (bracketTournament) {
@@ -86,11 +86,16 @@ export default function JoinTournamentPage() {
       }
 
       // Try to find round robin tournament with this code
-      const { data: rrTournament } = await supabase
+      // Use maybeSingle() to avoid error when no rows found
+      const { data: rrTournament, error: rrError } = await supabase
         .from("round_robin_tournaments")
         .select("id, name, user_id")
         .eq("invite_code", code)
-        .single();
+        .maybeSingle();
+
+      if (rrError) {
+        console.error("Error finding round robin tournament:", rrError);
+      }
 
       if (rrTournament) {
         // Check if user is already the owner
