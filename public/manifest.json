@@ -1,0 +1,18 @@
+{
+  "name": "PickleBracket",
+  "short_name": "PickleBracket",
+  "description": "Create and manage pickleball tournaments with ease",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#134e4a",
+  "theme_color": "#134e4a",
+  "icons": [
+    {
+      "src": "/pickleball.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

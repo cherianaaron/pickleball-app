@@ -24,10 +24,15 @@ export const metadata: Metadata = {
   title: "PickleBracket | Tournament Manager",
   description: "Create and manage pickleball tournaments with ease. Generate brackets, track scores, and crown champions!",
   icons: {
-    icon: "/pickleball.svg",
+    icon: [
+      { url: "/pickleball.svg", type: "image/svg+xml" },
+    ],
     shortcut: "/pickleball.svg",
-    apple: "/pickleball.svg",
+    apple: [
+      { url: "/pickleball.svg", sizes: "180x180", type: "image/svg+xml" },
+    ],
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
