@@ -61,7 +61,8 @@ export default function JoinTournamentPage() {
 
         if (existing) {
           setSuccess(`You've already joined "${bracketTournament.name}"!`);
-          setTimeout(() => router.push("/bracket"), 1500);
+          // Redirect with tournament ID so bracket page loads the correct tournament
+          setTimeout(() => router.push(`/bracket?tournament=${bracketTournament.id}`), 1500);
           setLoading(false);
           return;
         }
@@ -118,6 +119,8 @@ export default function JoinTournamentPage() {
 
         if (existing) {
           setSuccess(`You've already joined "${rrTournament.name}"!`);
+          // Restore localStorage so round robin page can load the tournament
+          localStorage.setItem("activeRoundRobinTournamentId", rrTournament.id);
           setTimeout(() => router.push("/round-robin"), 1500);
           setLoading(false);
           return;

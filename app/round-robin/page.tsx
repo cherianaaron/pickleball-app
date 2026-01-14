@@ -204,9 +204,10 @@ export default function RoundRobinPage() {
         return;
       }
       
-      // If no localStorage, check if user owns any active round robin tournaments
+      // If no localStorage, check if user owns or has joined any active round robin tournaments
       try {
-        const { data: ownedTournaments, error } = await supabase
+        // First check for owned tournaments
+        const { data: ownedTournaments, error: ownedError } = await supabase
           .from("round_robin_tournaments")
           .select("id, name, is_playoffs_started")
           .eq("user_id", user.id)
@@ -214,9 +215,8 @@ export default function RoundRobinPage() {
           .order("created_at", { ascending: false })
           .limit(1);
         
-        if (error) {
-          console.error("Error checking owned tournaments:", error);
-          return;
+        if (ownedError) {
+          console.error("Error checking owned tournaments:", ownedError);
         }
         
         // Auto-load the most recent active tournament owned by this user
@@ -224,9 +224,43 @@ export default function RoundRobinPage() {
           const mostRecent = ownedTournaments[0];
           console.log("Auto-loading owned tournament:", mostRecent.name);
           loadTournamentById(mostRecent.id);
+          return;
+        }
+        
+        // If not an owner, check if user has joined any tournaments as collaborator
+        const { data: collaborations, error: collabError } = await supabase
+          .from("round_robin_collaborators")
+          .select("tournament_id")
+          .eq("user_id", user.id)
+          .order("joined_at", { ascending: false })
+          .limit(1);
+        
+        if (collabError) {
+          console.error("Error checking collaborations:", collabError);
+          return;
+        }
+        
+        if (collaborations && collaborations.length > 0) {
+          // Verify the tournament is still active (not in playoffs)
+          const { data: tournament, error: tournamentError } = await supabase
+            .from("round_robin_tournaments")
+            .select("id, name, is_playoffs_started")
+            .eq("id", collaborations[0].tournament_id)
+            .eq("is_playoffs_started", false)
+            .single();
+          
+          if (tournamentError) {
+            console.error("Error checking collaborated tournament:", tournamentError);
+            return;
+          }
+          
+          if (tournament) {
+            console.log("Auto-loading collaborated tournament:", tournament.name);
+            loadTournamentById(tournament.id);
+          }
         }
       } catch (err) {
-        console.error("Error auto-loading owned tournament:", err);
+        console.error("Error auto-loading tournament:", err);
       }
     };
     
