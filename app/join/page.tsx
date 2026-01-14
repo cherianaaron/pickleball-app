@@ -43,9 +43,10 @@ export default function JoinTournamentPage() {
       }
 
       if (bracketTournament) {
-        // Check if user is already the owner
+        // If user is the owner, help them reconnect to their tournament
         if (bracketTournament.user_id === user.id) {
-          setError("You are the owner of this tournament!");
+          setSuccess(`Reconnecting to your tournament "${bracketTournament.name}"...`);
+          setTimeout(() => router.push(`/bracket?tournament=${bracketTournament.id}`), 1000);
           setLoading(false);
           return;
         }
@@ -98,9 +99,11 @@ export default function JoinTournamentPage() {
       }
 
       if (rrTournament) {
-        // Check if user is already the owner
+        // If user is the owner, help them reconnect to their tournament
         if (rrTournament.user_id === user.id) {
-          setError("You are the owner of this tournament!");
+          setSuccess(`Reconnecting to your tournament "${rrTournament.name}"...`);
+          localStorage.setItem("activeRoundRobinTournamentId", rrTournament.id);
+          setTimeout(() => router.push("/round-robin"), 1000);
           setLoading(false);
           return;
         }

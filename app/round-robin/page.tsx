@@ -194,13 +194,43 @@ export default function RoundRobinPage() {
 
   // Auto-load active tournament on mount (only if logged in)
   useEffect(() => {
-    // Only load saved tournament if user is logged in
-    if (user && !authLoading) {
+    const autoLoadTournament = async () => {
+      if (!user || authLoading) return;
+      
+      // First, try to load from localStorage
       const savedTournamentId = localStorage.getItem(ACTIVE_RR_KEY);
       if (savedTournamentId) {
         loadTournamentById(savedTournamentId);
+        return;
       }
-    }
+      
+      // If no localStorage, check if user owns any active round robin tournaments
+      try {
+        const { data: ownedTournaments, error } = await supabase
+          .from("round_robin_tournaments")
+          .select("id, name, is_playoffs_started")
+          .eq("user_id", user.id)
+          .eq("is_playoffs_started", false) // Only get tournaments that haven't moved to playoffs
+          .order("created_at", { ascending: false })
+          .limit(1);
+        
+        if (error) {
+          console.error("Error checking owned tournaments:", error);
+          return;
+        }
+        
+        // Auto-load the most recent active tournament owned by this user
+        if (ownedTournaments && ownedTournaments.length > 0) {
+          const mostRecent = ownedTournaments[0];
+          console.log("Auto-loading owned tournament:", mostRecent.name);
+          loadTournamentById(mostRecent.id);
+        }
+      } catch (err) {
+        console.error("Error auto-loading owned tournament:", err);
+      }
+    };
+    
+    autoLoadTournament();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
