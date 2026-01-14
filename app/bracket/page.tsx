@@ -9,6 +9,7 @@ import ErrorMessage from "../components/ErrorMessage";
 import ShareTournament from "../components/ShareTournament";
 import { useTournament } from "../context/TournamentContext";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 function BracketPageContent() {
   const { tournament, loading, error, resetTournament, loadTournamentById, clearError } = useTournament();
@@ -39,6 +40,81 @@ function BracketPageContent() {
       });
     }
   }, [searchParams, tournament, loadTournamentById]);
+
+  // Auto-detect owned or collaborated tournaments when no tournament is loaded
+  useEffect(() => {
+    const autoDetectTournament = async () => {
+      // Skip if already loading, already have a tournament, or URL has tournament param
+      if (loading || loadingFromUrl || tournament || authLoading || !user) return;
+      if (searchParams.get("tournament")) return;
+
+      try {
+        setLoadingFromUrl(true);
+        
+        // First check for owned tournaments (most recent active one)
+        const { data: ownedTournaments, error: ownedError } = await supabase
+          .from("tournaments")
+          .select("id, name, is_complete")
+          .eq("user_id", user.id)
+          .eq("is_complete", false)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        
+        if (ownedError) {
+          console.error("Error checking owned tournaments:", ownedError);
+        }
+        
+        if (ownedTournaments && ownedTournaments.length > 0) {
+          console.log("Auto-loading owned bracket tournament:", ownedTournaments[0].name);
+          await loadTournamentById(ownedTournaments[0].id);
+          setLoadingFromUrl(false);
+          return;
+        }
+        
+        // If not an owner, check if user has joined any tournaments as collaborator
+        const { data: collaborations, error: collabError } = await supabase
+          .from("tournament_collaborators")
+          .select("tournament_id")
+          .eq("user_id", user.id)
+          .order("joined_at", { ascending: false })
+          .limit(1);
+        
+        if (collabError) {
+          console.error("Error checking collaborations:", collabError);
+          setLoadingFromUrl(false);
+          return;
+        }
+        
+        if (collaborations && collaborations.length > 0) {
+          // Verify the tournament is still active
+          const { data: tournamentData, error: tournamentError } = await supabase
+            .from("tournaments")
+            .select("id, name, is_complete")
+            .eq("id", collaborations[0].tournament_id)
+            .eq("is_complete", false)
+            .single();
+          
+          if (tournamentError) {
+            console.error("Error checking collaborated tournament:", tournamentError);
+            setLoadingFromUrl(false);
+            return;
+          }
+          
+          if (tournamentData) {
+            console.log("Auto-loading collaborated bracket tournament:", tournamentData.name);
+            await loadTournamentById(tournamentData.id);
+          }
+        }
+      } catch (err) {
+        console.error("Error auto-detecting tournament:", err);
+      } finally {
+        setLoadingFromUrl(false);
+      }
+    };
+    
+    autoDetectTournament();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading, tournament, loading, loadingFromUrl]);
 
   if (loading || loadingFromUrl) {
     return (
