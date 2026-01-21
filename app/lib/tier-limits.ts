@@ -119,3 +119,15 @@ export function getRequiredTier(feature: keyof TierLimits): SubscriptionTier {
   if (canUseFeature("club", feature)) return "club";
   return "league";
 }
+
+// Pricing display (for UI) - safe for client-side use
+export const PRICING = {
+  club: {
+    monthly: 4.99,
+    yearly: 49.90, // 2 months free (10 months × $4.99)
+  },
+  league: {
+    monthly: 9.99,
+    yearly: 99.90, // 2 months free (10 months × $9.99)
+  },
+};

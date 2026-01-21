@@ -10,8 +10,8 @@ import {
   TIER_NAMES,
   TIER_DESCRIPTIONS,
   SubscriptionTier,
+  PRICING,
 } from "../lib/tier-limits";
-import { PRICING } from "../lib/stripe";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 function PricingContent() {
