@@ -23,6 +23,7 @@ export default function Navigation() {
     { href: "/bracket", label: "Bracket", icon: "🏆" },
     { href: "/history", label: "History", icon: "📜" },
     { href: "/join", label: "Join", icon: "🤝" },
+    { href: "/pricing", label: "Pricing", icon: "💎" },
     { href: "/faq", label: "How It Works", icon: "📖" },
     { href: "/settings", label: "Settings", icon: "⚙️" },
   ];
