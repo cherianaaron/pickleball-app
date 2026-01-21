@@ -111,6 +111,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Ensure we have a valid customer ID
+    if (!stripeCustomerId) {
+      return NextResponse.json(
+        { message: "Failed to create customer" },
+        { status: 500 }
+      );
+    }
+
     // Create Stripe Checkout session with 7-day trial
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
