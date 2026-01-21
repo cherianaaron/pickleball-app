@@ -7,12 +7,17 @@ import PlayerForm from "../components/PlayerForm";
 import PlayerList from "../components/PlayerList";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import UpgradePrompt from "../components/UpgradePrompt";
 import { useTournament } from "../context/TournamentContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import { getRequiredTier } from "../lib/tier-limits";
 
 function PlayersPageContent() {
   const { tournament, loading, error, generateBracket, setTournamentName, resetTournament, loadTournamentById } = useTournament();
+  const { limits, checkLimit } = useSubscription();
   const searchParams = useSearchParams();
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
   // Handle ?tournament=<id> query parameter (e.g., from Round Robin playoffs)
   useEffect(() => {
@@ -115,8 +120,22 @@ function PlayersPageContent() {
   }
 
   const canGenerateBracket = tournament && tournament.players.length >= 2 && !tournament.isStarted;
+  const playerCount = tournament?.players.length || 0;
+  const playerLimit = limits.maxPlayersPerTournament;
+  const isAtPlayerLimit = playerLimit !== Infinity && playerCount >= playerLimit;
 
   return (
+    <>
+      {/* Upgrade Prompt Modal */}
+      {showUpgradePrompt && (
+        <UpgradePrompt
+          feature="players"
+          requiredTier={getRequiredTier("maxPlayersPerTournament")}
+          currentValue={playerCount}
+          limit={playerLimit}
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
@@ -154,16 +173,38 @@ function PlayersPageContent() {
           </div>
         )}
 
+        {/* Player Limit Warning */}
+        {isAtPlayerLimit && (
+          <div className="mb-6 bg-yellow-500/20 border border-yellow-500/30 rounded-2xl p-4 flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div className="flex-1">
+              <p className="text-yellow-400 font-semibold">Player Limit Reached</p>
+              <p className="text-yellow-400/70 text-sm">
+                You've reached your limit of {playerLimit} players. 
+                <button 
+                  onClick={() => setShowUpgradePrompt(true)}
+                  className="ml-1 underline hover:text-yellow-300"
+                >
+                  Upgrade to add more
+                </button>
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Add Player Form */}
         <div className="mb-12">
-          <PlayerForm />
+          <PlayerForm 
+            disabled={isAtPlayerLimit} 
+            onLimitReached={() => setShowUpgradePrompt(true)}
+          />
         </div>
 
         {/* Player Count & Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-semibold text-white">
-              Players ({tournament?.players.length || 0})
+              Players ({playerCount}{playerLimit !== Infinity ? `/${playerLimit}` : ""})
             </h2>
             {tournament && tournament.players.length < 2 && (
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
@@ -216,6 +257,7 @@ function PlayersPageContent() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

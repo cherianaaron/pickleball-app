@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 import { useTournament } from "../context/TournamentContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { TIER_NAMES, TIER_LIMITS } from "../lib/tier-limits";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
@@ -25,8 +29,12 @@ const BUG_CATEGORIES = [
   { value: "other", label: "📝 Other" },
 ];
 
-export default function SettingsPage() {
+function SettingsContent() {
   const { tournament, loading, error, updateSettings, getUserSettingsPreference, saveUserSettingsPreference } = useTournament();
+  const { subscription, loading: subLoading, createPortalSession } = useSubscription();
+  const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const success = searchParams.get("success") === "true";
   
   // Initialize with defaults (will be updated from localStorage/tournament on mount)
   const [scoreLimit, setScoreLimit] = useState(11);
@@ -326,6 +334,144 @@ export default function SettingsPage() {
               <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center">
+              <span className="bg-transparent px-4 text-white/30 text-sm">Billing</span>
+            </div>
+          </div>
+
+          {/* Subscription / Billing Section */}
+          <div id="billing" className="glass rounded-3xl p-6 scroll-mt-24">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-lime-400/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">💎</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-white">Subscription</h3>
+                <p className="text-white/50 text-sm">Manage your plan and billing</p>
+              </div>
+            </div>
+
+            {/* Success Message */}
+            {success && (
+              <div className="mb-6 bg-green-500/20 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm flex items-center gap-2">
+                <span>🎉</span> Welcome! Your subscription is now active. Enjoy your trial!
+              </div>
+            )}
+
+            {user ? (
+              <>
+                {/* Current Plan */}
+                <div className="bg-white/5 rounded-2xl p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white/60 text-sm">Current Plan</span>
+                    <span className={`
+                      px-3 py-1 rounded-full text-xs font-bold
+                      ${subscription.tier === "league" 
+                        ? "bg-gradient-to-r from-orange-400 to-red-400 text-white"
+                        : subscription.tier === "club"
+                        ? "bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900"
+                        : "bg-white/10 text-white/60"
+                      }
+                    `}>
+                      {TIER_NAMES[subscription.tier].toUpperCase()}
+                    </span>
+                  </div>
+                  
+                  {subscription.tier !== "free" && (
+                    <>
+                      <div className="text-white text-sm mb-1">
+                        Status: <span className={`font-medium ${
+                          subscription.status === "active" ? "text-green-400" :
+                          subscription.status === "trialing" ? "text-lime-400" :
+                          subscription.status === "past_due" ? "text-red-400" :
+                          "text-white/60"
+                        }`}>
+                          {subscription.status === "trialing" ? "🎁 Trial Active" :
+                           subscription.status === "active" ? "✓ Active" :
+                           subscription.status === "past_due" ? "⚠️ Payment Due" :
+                           subscription.status}
+                        </span>
+                      </div>
+                      {subscription.currentPeriodEnd && (
+                        <div className="text-white/50 text-xs">
+                          {subscription.cancelAtPeriodEnd 
+                            ? `Cancels on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                            : `Renews on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                          }
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Plan Limits */}
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <div className="text-white/40 text-xs mb-2">Your Limits</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="text-white/60">
+                        Tournaments: <span className="text-white">{TIER_LIMITS[subscription.tier].maxActiveTournaments === Infinity ? "∞" : TIER_LIMITS[subscription.tier].maxActiveTournaments}</span>
+                      </div>
+                      <div className="text-white/60">
+                        Players: <span className="text-white">{TIER_LIMITS[subscription.tier].maxPlayersPerTournament === Infinity ? "∞" : TIER_LIMITS[subscription.tier].maxPlayersPerTournament}</span>
+                      </div>
+                      <div className="text-white/60">
+                        Collaborators: <span className="text-white">{TIER_LIMITS[subscription.tier].maxCollaborators === Infinity ? "∞" : TIER_LIMITS[subscription.tier].maxCollaborators}</span>
+                      </div>
+                      <div className="text-white/60">
+                        Round Robin: <span className={TIER_LIMITS[subscription.tier].hasRoundRobin ? "text-lime-400" : "text-red-400"}>{TIER_LIMITS[subscription.tier].hasRoundRobin ? "✓" : "✗"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  {subscription.tier === "free" ? (
+                    <Link
+                      href="/pricing"
+                      className="block w-full py-3 px-4 rounded-xl font-bold text-center bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 hover:shadow-lg hover:shadow-lime-400/30 transition-all"
+                    >
+                      🚀 Upgrade to Pro
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        const url = await createPortalSession();
+                        if (url) window.location.href = url;
+                      }}
+                      className="w-full py-3 px-4 rounded-xl font-medium bg-white/10 text-white hover:bg-white/20 transition-all"
+                    >
+                      ⚙️ Manage Subscription
+                    </button>
+                  )}
+                  
+                  {subscription.tier !== "free" && subscription.tier !== "league" && (
+                    <Link
+                      href="/pricing"
+                      className="block w-full py-3 px-4 rounded-xl font-medium text-center bg-white/10 text-white hover:bg-white/20 transition-all"
+                    >
+                      ⬆️ Upgrade to League
+                    </Link>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-white/60 mb-4">Sign in to manage your subscription</p>
+                <Link
+                  href="/login?redirect=/settings"
+                  className="inline-block px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900"
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10"></div>
+            </div>
+            <div className="relative flex justify-center">
               <span className="bg-transparent px-4 text-white/30 text-sm">Support</span>
             </div>
           </div>
@@ -464,5 +610,19 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner message="Loading settings..." />
+        </div>
+      }
+    >
+      <SettingsContent />
+    </Suspense>
   );
 }

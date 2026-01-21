@@ -3,19 +3,31 @@
 import { useState } from "react";
 import { useTournament } from "../context/TournamentContext";
 
-export default function PlayerForm() {
+interface PlayerFormProps {
+  disabled?: boolean;
+  onLimitReached?: () => void;
+}
+
+export default function PlayerForm({ disabled = false, onLimitReached }: PlayerFormProps) {
   const [name, setName] = useState("");
   const { addPlayer, tournament } = useTournament();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // If disabled due to limit, show upgrade prompt
+    if (disabled && onLimitReached) {
+      onLimitReached();
+      return;
+    }
+    
     if (name.trim()) {
       addPlayer(name);
       setName("");
     }
   };
 
-  const isDisabled = tournament?.isStarted;
+  const isDisabled = tournament?.isStarted || disabled;
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
@@ -25,7 +37,7 @@ export default function PlayerForm() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={isDisabled ? "Tournament started" : "Enter player name..."}
+            placeholder={tournament?.isStarted ? "Tournament started" : disabled ? "Player limit reached" : "Enter player name..."}
             disabled={isDisabled}
             className={`
               w-full px-5 py-4 rounded-2xl text-lg font-medium

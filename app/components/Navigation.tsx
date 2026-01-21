@@ -4,10 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import { TIER_NAMES } from "../lib/tier-limits";
 
 export default function Navigation() {
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
+  const { subscription, isTrialing } = useSubscription();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -147,14 +150,44 @@ export default function Navigation() {
 
                   {/* User Dropdown */}
                   {showUserMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-gradient-to-br from-emerald-900 to-teal-900 rounded-xl border border-lime-400/20 shadow-xl shadow-black/30 overflow-hidden">
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-gradient-to-br from-emerald-900 to-teal-900 rounded-xl border border-lime-400/20 shadow-xl shadow-black/30 overflow-hidden">
                       <div className="px-4 py-3 border-b border-white/10">
-                        <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
+                          <span className={`
+                            px-2 py-0.5 rounded-full text-[10px] font-bold
+                            ${subscription.tier === "league" 
+                              ? "bg-gradient-to-r from-orange-400 to-red-400 text-white"
+                              : subscription.tier === "club"
+                              ? "bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900"
+                              : "bg-white/20 text-white/60"
+                            }
+                          `}>
+                            {TIER_NAMES[subscription.tier].toUpperCase()}
+                            {isTrialing && " (Trial)"}
+                          </span>
+                        </div>
                         <p className="text-white/50 text-xs truncate">{user.email}</p>
                       </div>
+                      {subscription.tier === "free" && (
+                        <Link
+                          href="/pricing"
+                          className="w-full px-4 py-2 text-left text-sm text-lime-400 hover:bg-lime-400/10 transition-colors flex items-center gap-2"
+                        >
+                          <span>✨</span>
+                          Upgrade to Pro
+                        </Link>
+                      )}
+                      <Link
+                        href="/settings#billing"
+                        className="w-full px-4 py-2 text-left text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      >
+                        <span>💳</span>
+                        Billing
+                      </Link>
                       <button
                         onClick={handleSignOut}
-                        className="w-full px-4 py-3 text-left text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 border-t border-white/10"
                       >
                         <span>🚪</span>
                         Sign Out
@@ -240,10 +273,39 @@ export default function Navigation() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
+                            <span className={`
+                              px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0
+                              ${subscription.tier === "league" 
+                                ? "bg-gradient-to-r from-orange-400 to-red-400 text-white"
+                                : subscription.tier === "club"
+                                ? "bg-lime-400 text-emerald-900"
+                                : "bg-white/20 text-white/60"
+                              }
+                            `}>
+                              {TIER_NAMES[subscription.tier].toUpperCase()}
+                            </span>
+                          </div>
                           <p className="text-white/50 text-xs truncate">{user.email}</p>
                         </div>
                       </div>
+                      {subscription.tier === "free" && (
+                        <Link
+                          href="/pricing"
+                          className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-lime-400 hover:bg-lime-400/10 border-l-4 border-transparent transition-all duration-200"
+                        >
+                          <span className="text-lg">✨</span>
+                          <span>Upgrade to Pro</span>
+                        </Link>
+                      )}
+                      <Link
+                        href="/settings#billing"
+                        className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10 border-l-4 border-transparent transition-all duration-200"
+                      >
+                        <span className="text-lg">💳</span>
+                        <span>Billing</span>
+                      </Link>
                       <button
                         onClick={handleSignOut}
                         className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-500/10 border-l-4 border-transparent transition-all duration-200"

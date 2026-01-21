@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { TournamentProvider } from "./context/TournamentContext";
 import { AuthProvider } from "./context/AuthContext";
+import { SubscriptionProvider } from "./context/SubscriptionContext";
 import Navigation from "./components/Navigation";
 import WinnerDisplay from "./components/WinnerDisplay";
 
@@ -47,13 +48,15 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <AuthProvider>
-          <TournamentProvider>
-            <Navigation />
-            <main className="pt-16 min-h-screen">
-              {children}
-            </main>
-            <WinnerDisplay />
-          </TournamentProvider>
+          <SubscriptionProvider>
+            <TournamentProvider>
+              <Navigation />
+              <main className="pt-16 min-h-screen">
+                {children}
+              </main>
+              <WinnerDisplay />
+            </TournamentProvider>
+          </SubscriptionProvider>
         </AuthProvider>
         <SpeedInsights />
         <Analytics />

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ShareTournament from "../components/ShareTournament";
 
@@ -60,10 +61,14 @@ type Phase = "setup" | "pool-play" | "rankings" | "playoffs";
 export default function RoundRobinPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { limits, loading: subLoading } = useSubscription();
   const [phase, setPhase] = useState<Phase>("setup");
   const [loading, setLoading] = useState(false); // Start false - no auto-loading
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if user has access to Round Robin
+  const hasRoundRobinAccess = limits.hasRoundRobin;
   
   // Setup state
   const [tournamentName, setTournamentName] = useState("Round Robin Championship");
@@ -845,10 +850,66 @@ export default function RoundRobinPage() {
     }
   };
 
-  if (loading || authLoading) {
+  if (loading || authLoading || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner message="Loading round robin..." />
+      </div>
+    );
+  }
+
+  // Show upgrade prompt if user doesn't have Round Robin access and is in setup (not viewing existing)
+  if (!hasRoundRobinAccess && phase === "setup" && !tournamentId) {
+    return (
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="glass rounded-3xl p-8 sm:p-12">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6">
+              <span className="text-4xl">🔒</span>
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-4">Round Robin is a Pro Feature</h1>
+            <p className="text-white/60 mb-8">
+              Upgrade to Club or League to create Round Robin tournaments with multiple pools, 
+              automatic scheduling, and playoff brackets.
+            </p>
+            
+            <div className="bg-white/5 rounded-2xl p-6 mb-8 text-left">
+              <p className="text-lime-400 font-semibold mb-3">What you get with Round Robin:</p>
+              <ul className="space-y-2 text-white/70 text-sm">
+                <li className="flex items-center gap-2">
+                  <span className="text-lime-400">✓</span> Create 2-pool tournaments
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-lime-400">✓</span> Automatic match scheduling
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-lime-400">✓</span> Court assignments
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-lime-400">✓</span> Live standings and rankings
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-lime-400">✓</span> Automatic playoff bracket creation
+                </li>
+              </ul>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/pricing"
+                className="px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+              >
+                🚀 Upgrade to Pro
+              </Link>
+              <Link
+                href="/bracket"
+                className="px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 transition-all duration-300"
+              >
+                🏆 Use Bracket Instead
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
