@@ -308,7 +308,7 @@ export default function Navigation() {
               ) : (
                 <Link
                   href="/login"
-                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-300"
+                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-300 whitespace-nowrap"
                 >
                   Sign In
                 </Link>
