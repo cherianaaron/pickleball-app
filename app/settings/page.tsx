@@ -10,6 +10,7 @@ import { supabase } from "../lib/supabase";
 import { TIER_NAMES, TIER_LIMITS } from "../lib/tier-limits";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import { SettingsIcon } from "../components/Icons";
 
 const SCORE_OPTIONS = [5, 7, 9, 11, 15, 21];
 const TIMER_OPTIONS = [
@@ -174,8 +175,8 @@ function SettingsContent() {
           </div>
           <div className="text-center">
             <div className="inline-block mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
-                <span className="text-3xl">⚙️</span>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 text-lime-400">
+                <SettingsIcon size={32} />
               </div>
             </div>
             <h1 className="text-4xl font-bold text-white mb-2">Settings</h1>
@@ -439,7 +440,7 @@ function SettingsContent() {
                       }}
                       className="w-full py-3 px-4 rounded-xl font-medium bg-white/10 text-white hover:bg-white/20 transition-all"
                     >
-                      ⚙️ Manage Subscription
+                      <span className="inline-flex items-center gap-2"><SettingsIcon size={18} /> Manage Subscription</span>
                     </button>
                   )}
                   

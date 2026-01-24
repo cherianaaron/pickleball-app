@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { JoinIcon, LockIcon } from "../components/Icons";
 
 export default function JoinTournamentPage() {
   const router = useRouter();
@@ -174,8 +175,8 @@ export default function JoinTournamentPage() {
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto text-center">
           <div className="glass rounded-3xl p-8 sm:p-12">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30 mx-auto mb-6">
-              <span className="text-4xl">🤝</span>
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30 mx-auto mb-6 text-orange-400">
+              <JoinIcon size={40} />
             </div>
             <h1 className="text-3xl font-bold text-white mb-4">Join a Tournament</h1>
             <p className="text-white/60 mb-8">
@@ -204,8 +205,8 @@ export default function JoinTournamentPage() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-yellow-300 flex items-center justify-center shadow-2xl shadow-orange-400/30 mx-auto mb-6">
-            <span className="text-4xl">🤝</span>
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-yellow-300 flex items-center justify-center shadow-2xl shadow-orange-400/30 mx-auto mb-6 text-white">
+            <JoinIcon size={40} />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Join a Tournament</h1>
           <p className="text-white/60">
@@ -250,7 +251,7 @@ export default function JoinTournamentPage() {
               disabled={loading || !inviteCode.trim()}
               className="w-full px-6 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg shadow-orange-400/30 hover:shadow-orange-400/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Joining..." : "🤝 Join Tournament"}
+              {loading ? "Joining..." : <span className="inline-flex items-center gap-2"><JoinIcon size={20} /> Join Tournament</span>}
             </button>
           </form>
 

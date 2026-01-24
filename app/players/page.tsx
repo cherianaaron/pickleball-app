@@ -8,6 +8,7 @@ import PlayerList from "../components/PlayerList";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import UpgradePrompt from "../components/UpgradePrompt";
+import { PlayersIcon } from "../components/Icons";
 import { useTournament } from "../context/TournamentContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { getRequiredTier } from "../lib/tier-limits";
@@ -89,8 +90,8 @@ function PlayersPageContent() {
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto text-center">
           <div className="glass rounded-3xl p-8 sm:p-12">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6">
-              <span className="text-4xl">👥</span>
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6 text-lime-400">
+              <PlayersIcon size={40} />
             </div>
             <h1 className="text-3xl font-bold text-white mb-4">No Active Bracket Tournament</h1>
             <p className="text-white/60 mb-4">
@@ -141,8 +142,8 @@ function PlayersPageContent() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
-              <span className="text-3xl">👥</span>
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 text-lime-400">
+              <PlayersIcon size={32} />
             </div>
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Manage Players</h1>

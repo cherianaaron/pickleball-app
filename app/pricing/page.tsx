@@ -13,6 +13,7 @@ import {
   PRICING,
 } from "../lib/tier-limits";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { PricingIcon } from "../components/Icons";
 
 function PricingContent() {
   const { user } = useAuth();
@@ -74,8 +75,8 @@ function PricingContent() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
-              <span className="text-3xl">💎</span>
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 text-lime-400">
+              <PricingIcon size={32} />
             </div>
           </div>
           <h1 className="text-4xl font-bold text-white mb-4">

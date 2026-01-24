@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ShareTournament from "../components/ShareTournament";
+import { RoundRobinIcon, LockIcon } from "../components/Icons";
 
 interface Team {
   id: string;
@@ -920,8 +921,8 @@ export default function RoundRobinPage() {
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto text-center">
           <div className="glass rounded-3xl p-8 sm:p-12">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30 mx-auto mb-6">
-              <span className="text-4xl">🔄</span>
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-orange-400/30 mx-auto mb-6 text-orange-400">
+              <RoundRobinIcon size={40} />
             </div>
             <h1 className="text-3xl font-bold text-white mb-4">Round Robin Tournament</h1>
             <p className="text-white/60 mb-8">
@@ -983,8 +984,8 @@ export default function RoundRobinPage() {
           </Link>
           <div className="text-center">
             <div className="inline-block mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
-                <span className="text-3xl">🔄</span>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 text-lime-400">
+                <RoundRobinIcon size={32} />
               </div>
             </div>
             <h1 className="text-4xl font-bold text-white mb-2">Round Robin</h1>
@@ -1722,9 +1723,9 @@ export default function RoundRobinPage() {
                 <button
                   onClick={resetTournament}
                   disabled={saving}
-                  className="px-8 py-4 rounded-2xl text-lg font-semibold bg-orange-500/20 text-orange-300 border border-orange-400/30 hover:bg-orange-500/30 transition-colors"
+                  className="px-8 py-4 rounded-2xl text-lg font-semibold bg-orange-500/20 text-orange-300 border border-orange-400/30 hover:bg-orange-500/30 transition-colors inline-flex items-center gap-2"
                 >
-                  🔄 Start New Round Robin
+                  <RoundRobinIcon size={20} /> Start New Round Robin
                 </button>
               </div>
             </div>

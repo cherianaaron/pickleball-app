@@ -8,6 +8,7 @@ import { useTournament } from "../context/TournamentContext";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import { HistoryIcon, LockIcon } from "../components/Icons";
 
 interface TournamentSummary {
   id: string;
@@ -318,8 +319,8 @@ export default function HistoryPage() {
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto text-center">
           <div className="glass rounded-3xl p-8 sm:p-12">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6">
-              <span className="text-4xl">📜</span>
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 mx-auto mb-6 text-lime-400">
+              <HistoryIcon size={40} />
             </div>
             <h1 className="text-3xl font-bold text-white mb-4">Tournament History</h1>
             <p className="text-white/60 mb-8">
@@ -343,8 +344,8 @@ export default function HistoryPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30">
-              <span className="text-3xl">📜</span>
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-lime-400/20 to-yellow-300/20 flex items-center justify-center border-2 border-lime-400/30 text-lime-400">
+              <HistoryIcon size={32} />
             </div>
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Tournament History</h1>
@@ -619,7 +620,7 @@ export default function HistoryPage() {
               </div>
             ) : (
               <div className="glass rounded-3xl p-8 flex flex-col items-center justify-center min-h-[400px] text-center">
-                <div className="text-6xl mb-4">📜</div>
+                <div className="text-lime-400/50 mb-4"><HistoryIcon size={64} /></div>
                 <p className="text-white/50 text-lg">Select a tournament to view details</p>
                 <p className="text-white/30 text-sm mt-2">
                   Click on any tournament from the list
