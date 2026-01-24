@@ -7,6 +7,115 @@ import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { TIER_NAMES } from "../lib/tier-limits";
 
+// Navbar icon components using currentColor for theme matching
+const NavIcons = {
+  home: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 11.5 12 4l8 7.5"/>
+        <path d="M6.5 10.5V20h11V10.5"/>
+        <circle cx="10.2" cy="15.2" r="0.7"/>
+        <circle cx="12" cy="14.3" r="0.7"/>
+        <circle cx="13.8" cy="15.2" r="0.7"/>
+      </g>
+    </svg>
+  ),
+  players: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="8" cy="9" r="2"/>
+        <circle cx="16" cy="9" r="2"/>
+        <path d="M4.5 19c.8-3 2.6-4.8 5.5-4.8"/>
+        <path d="M19.5 19c-.8-3-2.6-4.8-5.5-4.8"/>
+        <circle cx="12" cy="13.2" r="1.1"/>
+        <circle cx="11.6" cy="12.8" r="0.25"/>
+        <circle cx="12.4" cy="12.8" r="0.25"/>
+        <circle cx="12" cy="13.7" r="0.25"/>
+      </g>
+    </svg>
+  ),
+  roundRobin: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7.2 7.2a6.5 6.5 0 0 1 10 2.1"/>
+        <path d="M18 6.8v3.6h-3.6"/>
+        <path d="M16.8 16.8a6.5 6.5 0 0 1-10-2.1"/>
+        <path d="M6 17.2v-3.6h3.6"/>
+        <circle cx="12" cy="12" r="1.2"/>
+        <circle cx="11.6" cy="11.6" r="0.25"/>
+        <circle cx="12.4" cy="11.6" r="0.25"/>
+        <circle cx="12" cy="12.5" r="0.25"/>
+      </g>
+    </svg>
+  ),
+  bracket: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 6h3v3"/>
+        <path d="M6 18h3v-3"/>
+        <path d="M9 9h3v2"/>
+        <path d="M9 15h3v-2"/>
+        <path d="M15 10h3v4h-3"/>
+        <path d="M12 11h3"/>
+        <path d="M12 13h3"/>
+      </g>
+    </svg>
+  ),
+  history: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 3h7l3 3v15H7z"/>
+        <path d="M14 3v3h3"/>
+        <path d="M12 12.2v2.8l2 1.2"/>
+        <circle cx="12" cy="14" r="4.2"/>
+      </g>
+    </svg>
+  ),
+  join: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 6H6v12h2"/>
+        <path d="M16 6h2v12h-2"/>
+        <path d="M12 9v6"/>
+        <path d="M9 12h6"/>
+      </g>
+    </svg>
+  ),
+  pricing: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5Z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </g>
+    </svg>
+  ),
+  howItWorks: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 19c-2.2-1.6-4.7-2.2-7.5-2.2V6.8C7.3 6.8 9.8 7.4 12 9"/>
+        <path d="M12 19c2.2-1.6 4.7-2.2 7.5-2.2V6.8C16.7 6.8 14.2 7.4 12 9"/>
+        <path d="M9.2 12.2h2.2v2.2H9.2z"/>
+        <path d="M12.6 13.3h2.2"/>
+        <path d="M11.4 14.4h1.2"/>
+      </g>
+    </svg>
+  ),
+  settings: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="inline-block flex-shrink-0">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3.8l1 .6 1.4-.3.8 1.4 1.3.5v1.6l.9 1.1-.9 1.1v1.6l-1.3.5-.8 1.4-1.4-.3-1 .6-1-.6-1.4.3-.8-1.4-1.3-.5v-1.6l-.9-1.1.9-1.1V6l1.3-.5.8-1.4 1.4.3z"/>
+        <circle cx="12" cy="12" r="1.7"/>
+        <circle cx="11.6" cy="11.6" r="0.25"/>
+        <circle cx="12.4" cy="11.6" r="0.25"/>
+        <circle cx="12" cy="12.5" r="0.25"/>
+      </g>
+    </svg>
+  ),
+};
+
+type IconKey = keyof typeof NavIcons;
+
 export default function Navigation() {
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
@@ -16,16 +125,16 @@ export default function Navigation() {
   const menuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const links = [
-    { href: "/", label: "Home", icon: "🏠" },
-    { href: "/players", label: "Players", icon: "👥" },
-    { href: "/round-robin", label: "Round Robin", icon: "🔄" },
-    { href: "/bracket", label: "Bracket", icon: "🏆" },
-    { href: "/history", label: "History", icon: "📜" },
-    { href: "/join", label: "Join", icon: "🤝" },
-    { href: "/pricing", label: "Pricing", icon: "💎" },
-    { href: "/faq", label: "How It Works", icon: "📖" },
-    { href: "/settings", label: "Settings", icon: "⚙️" },
+  const links: { href: string; label: string; icon: IconKey }[] = [
+    { href: "/", label: "Home", icon: "home" },
+    { href: "/players", label: "Players", icon: "players" },
+    { href: "/round-robin", label: "Round Robin", icon: "roundRobin" },
+    { href: "/bracket", label: "Bracket", icon: "bracket" },
+    { href: "/history", label: "History", icon: "history" },
+    { href: "/join", label: "Join", icon: "join" },
+    { href: "/pricing", label: "Pricing", icon: "pricing" },
+    { href: "/faq", label: "How It Works", icon: "howItWorks" },
+    { href: "/settings", label: "Settings", icon: "settings" },
   ];
 
   // Close menu when clicking outside
@@ -108,7 +217,7 @@ export default function Navigation() {
                   key={link.href}
                   href={link.href}
                   className={`
-                    relative px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap
+                    relative px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap inline-flex items-center gap-1.5
                     ${
                       isActive
                         ? "bg-lime-400 text-emerald-900 shadow-lg shadow-lime-400/30"
@@ -116,7 +225,7 @@ export default function Navigation() {
                     }
                   `}
                 >
-                  <span className="mr-1">{link.icon}</span>
+                  {NavIcons[link.icon]}
                   <span>{link.label}</span>
                 </Link>
               );
@@ -221,7 +330,7 @@ export default function Navigation() {
               aria-label="Toggle navigation menu"
               aria-expanded={isMobileMenuOpen}
             >
-              <span>{currentPage.icon}</span>
+              {NavIcons[currentPage.icon]}
               <span>{currentPage.label}</span>
               <span className={`transition-transform duration-300 ${isMobileMenuOpen ? "rotate-180" : ""}`}>
                 ▼
@@ -246,7 +355,7 @@ export default function Navigation() {
                         }
                       `}
                     >
-                      <span className="text-lg">{link.icon}</span>
+                      <span className="w-5 h-5 flex items-center justify-center">{NavIcons[link.icon]}</span>
                       <span>{link.label}</span>
                       {isActive && <span className="ml-auto text-xs">●</span>}
                     </Link>
