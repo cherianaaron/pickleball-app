@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/app/lib/stripe";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import { getPostHogClient } from "@/app/lib/posthog-server";
 
 // Create a Supabase client with service role for server-side operations
 const supabaseAdmin = createClient(
@@ -107,6 +108,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       trial_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
+  // Track checkout completion in PostHog
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: userId,
+    event: "checkout_completed",
+    properties: {
+      tier,
+      stripe_customer_id: session.customer as string,
+      amount_total: session.amount_total,
+      currency: session.currency,
+    },
+  });
+
   console.log(`Checkout completed for user ${userId}, tier: ${tier}`);
 }
 
@@ -170,18 +184,48 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       billing_interval: interval,
       current_period_start: new Date(subData.current_period_start * 1000).toISOString(),
       current_period_end: new Date(subData.current_period_end * 1000).toISOString(),
-      trial_end: subData.trial_end 
-        ? new Date(subData.trial_end * 1000).toISOString() 
+      trial_end: subData.trial_end
+        ? new Date(subData.trial_end * 1000).toISOString()
         : null,
       cancel_at_period_end: subData.cancel_at_period_end,
     })
     .eq("stripe_customer_id", customerId);
+
+  // Track subscription update in PostHog (get user_id from existing subscription record)
+  const { data: subRecord } = await supabaseAdmin
+    .from("user_subscriptions")
+    .select("user_id")
+    .eq("stripe_customer_id", customerId)
+    .single();
+
+  if (subRecord?.user_id) {
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: subRecord.user_id,
+      event: "subscription_updated",
+      properties: {
+        tier,
+        status,
+        billing_interval: interval,
+        cancel_at_period_end: subData.cancel_at_period_end,
+      },
+    });
+  }
 
   console.log(`Subscription updated for customer ${customerId}, status: ${status}`);
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
+
+  // Get user_id before updating
+  const { data: subRecord } = await supabaseAdmin
+    .from("user_subscriptions")
+    .select("user_id, tier")
+    .eq("stripe_customer_id", customerId)
+    .single();
+
+  const previousTier = subRecord?.tier;
 
   // Downgrade to free tier
   await supabaseAdmin
@@ -199,6 +243,18 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     })
     .eq("stripe_customer_id", customerId);
 
+  // Track subscription cancellation in PostHog
+  if (subRecord?.user_id) {
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: subRecord.user_id,
+      event: "subscription_cancelled",
+      properties: {
+        previous_tier: previousTier,
+      },
+    });
+  }
+
   console.log(`Subscription deleted for customer ${customerId}, downgraded to free`);
 }
 
@@ -211,6 +267,26 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
       status: "past_due",
     })
     .eq("stripe_customer_id", customerId);
+
+  // Track payment failure in PostHog
+  const { data: subRecord } = await supabaseAdmin
+    .from("user_subscriptions")
+    .select("user_id, tier")
+    .eq("stripe_customer_id", customerId)
+    .single();
+
+  if (subRecord?.user_id) {
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: subRecord.user_id,
+      event: "payment_failed",
+      properties: {
+        tier: subRecord.tier,
+        amount_due: invoice.amount_due,
+        currency: invoice.currency,
+      },
+    });
+  }
 
   console.log(`Payment failed for customer ${customerId}`);
 }

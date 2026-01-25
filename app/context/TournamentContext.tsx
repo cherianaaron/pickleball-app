@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
+import posthog from "posthog-js";
 
 export interface Player {
   id: string;
@@ -506,8 +507,17 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       if (updateError) throw updateError;
 
       await reloadCurrentTournament(tournament.id);
+
+      // Track bracket generation
+      posthog.capture("bracket_generated", {
+        tournament_id: tournament.id,
+        player_count: numPlayers,
+        rounds: rounds,
+        total_matches: matchesToCreate.length,
+      });
     } catch (err) {
       console.error("Error generating bracket:", err);
+      posthog.captureException(err);
       setError(err instanceof Error ? err.message : "Failed to generate bracket");
     }
   }, [tournament]);
@@ -819,15 +829,25 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
           .from("tournaments")
           .update({ is_complete: true, champion_id: winner.id })
           .eq("id", tournament.id);
-        
+
         // Show the winner celebration since tournament just completed
         setShowWinnerCelebration(true);
+
+        // Track tournament completion
+        posthog.capture("tournament_completed", {
+          tournament_id: tournament.id,
+          tournament_type: "bracket",
+          champion_name: winner.name,
+          player_count: tournament.players.length,
+          total_matches: tournament.matches.length,
+        });
       }
 
       // Reload tournament to get fresh data
       await reloadCurrentTournament(tournament.id);
     } catch (err) {
       console.error("Error updating match score:", err);
+      posthog.captureException(err);
       setError(err instanceof Error ? err.message : "Failed to update score");
     }
   }, [tournament]);
@@ -873,8 +893,18 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
         champion: null,
         settings: userSettings,
       });
+
+      // Track tournament creation
+      posthog.capture("tournament_created", {
+        tournament_id: newTournament.id,
+        tournament_type: "bracket",
+        score_limit: userSettings.scoreLimit,
+        win_by_two: userSettings.winByTwo,
+        game_timer_minutes: userSettings.gameTimerMinutes,
+      });
     } catch (err: unknown) {
       console.error("Error resetting tournament:", err);
+      posthog.captureException(err);
       // Show detailed error for debugging
       const errorMessage = err instanceof Error 
         ? err.message 

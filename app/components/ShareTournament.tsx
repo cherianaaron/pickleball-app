@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
+import posthog from "posthog-js";
 
 interface Collaborator {
   id: string;
@@ -93,8 +94,15 @@ export default function ShareTournament({ tournamentId, tournamentType, isOwner,
         return;
       }
       setInviteCode(newCode);
+
+      // Track invite code generation
+      posthog.capture("invite_code_generated", {
+        tournament_id: tournamentId,
+        tournament_type: tournamentType,
+      });
     } catch (err) {
       console.error("Error generating invite code:", err);
+      posthog.captureException(err);
     } finally {
       setGenerating(false);
     }

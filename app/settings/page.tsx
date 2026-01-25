@@ -11,6 +11,7 @@ import { TIER_NAMES, TIER_LIMITS } from "../lib/tier-limits";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { SettingsIcon } from "../components/Icons";
+import posthog from "posthog-js";
 
 const SCORE_OPTIONS = [5, 7, 9, 11, 15, 21];
 const TIMER_OPTIONS = [
@@ -123,6 +124,12 @@ function SettingsContent() {
         });
 
       if (insertError) throw insertError;
+
+      // Track bug report submission
+      posthog.capture("bug_report_submitted", {
+        category: bugCategory,
+        has_email: !!bugEmail.trim(),
+      });
 
       setBugSubmitted(true);
       setBugTitle("");

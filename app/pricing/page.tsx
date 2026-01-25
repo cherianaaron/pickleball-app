@@ -14,6 +14,7 @@ import {
 } from "../lib/tier-limits";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { PricingIcon } from "../components/Icons";
+import posthog from "posthog-js";
 
 function PricingContent() {
   const { user } = useAuth();
@@ -31,6 +32,14 @@ function PricingContent() {
       return;
     }
 
+    // Track checkout initiation
+    posthog.capture("checkout_started", {
+      tier,
+      billing_interval: billingInterval,
+      price: billingInterval === "month" ? PRICING[tier].monthly : PRICING[tier].yearly,
+      current_tier: subscription.tier,
+    });
+
     setProcessingTier(tier);
     try {
       const url = await createCheckoutSession(tier, billingInterval);
@@ -39,6 +48,7 @@ function PricingContent() {
       }
     } catch (error) {
       console.error("Checkout error:", error);
+      posthog.captureException(error);
     } finally {
       setProcessingTier(null);
     }

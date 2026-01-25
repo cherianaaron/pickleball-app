@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTournament } from "../context/TournamentContext";
+import posthog from "posthog-js";
 
 interface PlayerFormProps {
   disabled?: boolean;
@@ -23,6 +24,13 @@ export default function PlayerForm({ disabled = false, onLimitReached }: PlayerF
     
     if (name.trim()) {
       addPlayer(name);
+
+      // Track player added event
+      posthog.capture("player_added", {
+        tournament_id: tournament?.id,
+        player_count: (tournament?.players.length || 0) + 1,
+      });
+
       setName("");
     }
   };

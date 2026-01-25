@@ -7,6 +7,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { JoinIcon, LockIcon } from "../components/Icons";
+import posthog from "posthog-js";
 
 export default function JoinTournamentPage() {
   const router = useRouter();
@@ -83,6 +84,13 @@ export default function JoinTournamentPage() {
           throw new Error(`Failed to join: ${joinError.message}`);
         }
 
+        // Track tournament joined event
+        posthog.capture("tournament_joined", {
+          tournament_id: bracketTournament.id,
+          tournament_type: "bracket",
+          tournament_name: bracketTournament.name,
+        });
+
         setSuccess(`Successfully joined "${bracketTournament.name}"!`);
         setTimeout(() => router.push(`/bracket?tournament=${bracketTournament.id}`), 1500);
         return;
@@ -138,6 +146,13 @@ export default function JoinTournamentPage() {
           });
 
         if (joinError) throw joinError;
+
+        // Track tournament joined event
+        posthog.capture("tournament_joined", {
+          tournament_id: rrTournament.id,
+          tournament_type: "round_robin",
+          tournament_name: rrTournament.name,
+        });
 
         setSuccess(`Successfully joined "${rrTournament.name}"!`);
         // Store the tournament ID for round robin page to load

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Match, useTournament } from "../context/TournamentContext";
+import posthog from "posthog-js";
 
 interface ScoreEntryProps {
   match: Match;
@@ -123,6 +124,19 @@ export default function ScoreEntry({ match: initialMatch, onClose }: ScoreEntryP
     }
 
     await updateMatchScore(match.id, s1, s2);
+
+    // Track match completion
+    const winner = s1 > s2 ? match.player1 : match.player2;
+    posthog.capture("match_completed", {
+      tournament_id: tournament?.id,
+      match_id: match.id,
+      round: match.round,
+      is_editing: isEditing,
+      winner_name: winner?.name,
+      score_difference: Math.abs(s1 - s2),
+      is_bronze_match: match.isBronzeMatch,
+    });
+
     onClose();
   };
 
