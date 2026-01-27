@@ -613,7 +613,6 @@ function SettingsContent() {
           {/* App Info */}
           <div className="text-center text-white/30 text-sm">
             <p>PickleBracket v1.0</p>
-            <p className="mt-1 text-center">🎂 Happy birthday Mylynh 🎉</p>
           </div>
         </div>
       </div>

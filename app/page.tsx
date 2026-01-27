@@ -243,7 +243,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-8 px-4 text-center text-white/30 text-sm">
-        <p className="text-center">🎂 Happy birthday Mylynh 🎉</p>
+        <p>PickleBracket - Tournament Management Made Easy</p>
       </footer>
     </div>
   );
