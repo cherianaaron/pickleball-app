@@ -241,10 +241,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Footer */}
-      <footer className="py-8 px-4 text-center text-white/30 text-sm">
-        <p>PickleBracket - Tournament Management Made Easy</p>
-      </footer>
     </div>
   );
 }

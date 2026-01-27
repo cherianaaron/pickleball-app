@@ -8,6 +8,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
 import Navigation from "./components/Navigation";
 import WinnerDisplay from "./components/WinnerDisplay";
+import Footer from "./components/Footer";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-geist-sans",
@@ -54,6 +55,7 @@ export default function RootLayout({
               <main className="pt-16 min-h-screen">
                 {children}
               </main>
+              <Footer />
               <WinnerDisplay />
             </TournamentProvider>
           </SubscriptionProvider>
