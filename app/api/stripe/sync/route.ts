@@ -156,12 +156,16 @@ export async function POST(request: NextRequest) {
         tier: tier,
         status: status,
         billing_interval: interval,
-        current_period_start: new Date(subData.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subData.current_period_end * 1000).toISOString(),
+        current_period_start: subData.current_period_start
+          ? new Date(subData.current_period_start * 1000).toISOString()
+          : null,
+        current_period_end: subData.current_period_end
+          ? new Date(subData.current_period_end * 1000).toISOString()
+          : null,
         trial_end: subData.trial_end
           ? new Date(subData.trial_end * 1000).toISOString()
           : null,
-        cancel_at_period_end: subData.cancel_at_period_end,
+        cancel_at_period_end: subData.cancel_at_period_end || false,
       })
       .eq("user_id", user.id);
 
