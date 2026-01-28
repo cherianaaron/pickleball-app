@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, STRIPE_PRICES } from "@/app/lib/stripe";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 // Create a Supabase client with service role for server-side operations
@@ -26,42 +27,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from auth header
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "") || 
-      request.cookies.get("sb-access-token")?.value;
-
-    // Get user from Supabase auth
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-      request.cookies.get("sb-oqgcbykzdlupfzktijex-auth-token")?.value?.replace(/^base64-/, "") || ""
+    // Create a Supabase client that can read the auth cookies
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+        },
+      }
     );
 
-    // Try alternative method to get user
+    // Get the current user from the session
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error("Auth error:", authError);
+    }
+
     let userId: string | null = null;
     let userEmail: string | null = null;
 
     if (user) {
       userId = user.id;
       userEmail = user.email || null;
-    } else {
-      // Try to get user from the session cookie directly
-      const cookieValue = request.cookies.get("sb-oqgcbykzdlupfzktijex-auth-token")?.value;
-      if (cookieValue) {
-        try {
-          const decoded = JSON.parse(Buffer.from(cookieValue.replace(/^base64-/, ""), "base64").toString());
-          if (decoded?.user?.id) {
-            userId = decoded.user.id;
-            userEmail = decoded.user.email;
-          }
-        } catch (e) {
-          console.error("Error decoding auth cookie:", e);
-        }
-      }
     }
 
     if (!userId) {
       return NextResponse.json(
-        { message: "Unauthorized" },
+        { message: "Unauthorized - please sign in" },
         { status: 401 }
       );
     }
