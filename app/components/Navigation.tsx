@@ -216,32 +216,60 @@ export default function Navigation() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden sm:flex items-center gap-1 ml-6 flex-nowrap">
-            {links.map((link) => {
-              const isActive = pathname === link.href;
-              const icon = 'icon' in link && link.icon ? NavIcons[link.icon as IconKey] : null;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`
-                    relative px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap inline-flex items-center gap-1.5
-                    ${
-                      isActive
-                        ? "bg-lime-400 text-emerald-900 shadow-lg shadow-lime-400/30"
-                        : "text-white/80 hover:text-white hover:bg-white/10"
-                    }
-                  `}
-                >
-                  {icon}
-                  <span>{link.label}</span>
-                </Link>
-              );
-            })}
+          {/* Desktop Navigation - Center links for public, right-aligned for auth */}
+          {!user && !loading && (
+            <div className="hidden sm:flex items-center justify-center flex-1 gap-4">
+              {links.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`
+                      relative px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap
+                      ${
+                        isActive
+                          ? "bg-lime-400 text-emerald-900 shadow-lg shadow-lime-400/30"
+                          : "text-white/80 hover:text-white hover:bg-white/10"
+                      }
+                    `}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
-            {/* Auth Button */}
-            <div className="ml-2 pl-2 border-l border-white/20">
+          {/* Desktop Navigation - Full nav for authenticated users */}
+          {user && (
+            <div className="hidden sm:flex items-center gap-1 ml-6 flex-nowrap">
+              {links.map((link) => {
+                const isActive = pathname === link.href;
+                const icon = 'icon' in link && link.icon ? NavIcons[link.icon as IconKey] : null;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`
+                      relative px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap inline-flex items-center gap-1.5
+                      ${
+                        isActive
+                          ? "bg-lime-400 text-emerald-900 shadow-lg shadow-lime-400/30"
+                          : "text-white/80 hover:text-white hover:bg-white/10"
+                      }
+                    `}
+                  >
+                    {icon}
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Auth Button */}
+          <div className="hidden sm:flex items-center ml-2 pl-2 border-l border-white/20">
               {loading ? (
                 <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
               ) : user ? (
