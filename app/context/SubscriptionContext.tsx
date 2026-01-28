@@ -165,12 +165,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
+      console.log("Syncing subscription from Stripe...");
       const response = await fetch("/api/stripe/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
       
-      if (response.ok) {
+      const data = await response.json();
+      console.log("Sync response:", data);
+      
+      if (response.ok && data.synced) {
         // Refetch subscription after sync
         await fetchSubscription();
         return true;
@@ -194,8 +198,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (!authLoading && user) {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("success") === "true") {
+        console.log("Detected success=true, triggering sync...");
         // User just returned from successful checkout, sync with Stripe
-        syncSubscription();
+        syncSubscription().then(result => {
+          console.log("Sync completed:", result);
+        });
       }
     }
   }, [authLoading, user, syncSubscription]);

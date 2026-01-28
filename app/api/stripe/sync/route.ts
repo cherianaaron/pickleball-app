@@ -72,23 +72,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ synced: true, tier: "free" });
     }
 
-    // Get the most recent subscription
-    const subscription = subscriptions.data[0];
+    // Get the most recent active/trialing subscription
+    const activeSubscription = subscriptions.data.find(
+      s => s.status === "active" || s.status === "trialing"
+    );
+    const subscription = activeSubscription || subscriptions.data[0];
+
+    console.log("Found subscription:", {
+      id: subscription.id,
+      status: subscription.status,
+      metadata: subscription.metadata,
+      priceId: subscription.items.data[0]?.price.id,
+    });
 
     // Determine tier from metadata or price
     let tier = subscription.metadata?.tier;
     if (!tier) {
-      // Try to determine from price
-      const priceId = subscription.items.data[0]?.price.id;
-      if (priceId?.includes("club")) {
+      // Try to determine from price ID
+      const priceId = subscription.items.data[0]?.price.id || "";
+      const priceLookupKey = subscription.items.data[0]?.price.lookup_key || "";
+      
+      if (priceId.toLowerCase().includes("club") || priceLookupKey.toLowerCase().includes("club")) {
         tier = "club";
-      } else if (priceId?.includes("league")) {
+      } else if (priceId.toLowerCase().includes("league") || priceLookupKey.toLowerCase().includes("league")) {
         tier = "league";
       } else {
         // Check price metadata
-        tier = subscription.items.data[0]?.price.metadata?.tier || "club";
+        tier = subscription.items.data[0]?.price.metadata?.tier;
+        
+        // Last resort: check by price amount (in cents)
+        if (!tier) {
+          const amount = subscription.items.data[0]?.price.unit_amount || 0;
+          // Club: $5/mo = 500 cents, $48/yr = 4800 cents
+          // League: $10/mo = 1000 cents, $96/yr = 9600 cents
+          if (amount <= 500 || amount === 4800) {
+            tier = "club";
+          } else {
+            tier = "league";
+          }
+        }
       }
     }
+    
+    console.log("Determined tier:", tier);
 
     // Determine status
     let status: string;
