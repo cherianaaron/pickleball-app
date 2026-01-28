@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       .from("user_subscriptions")
       .select("stripe_customer_id")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     if (subscription?.stripe_customer_id) {
       stripeCustomerId = subscription.stripe_customer_id;

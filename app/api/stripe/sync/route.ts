@@ -45,17 +45,53 @@ export async function POST(request: NextRequest) {
     // Get user's subscription record to find Stripe customer ID
     const { data: subRecord } = await supabaseAdmin
       .from("user_subscriptions")
-      .select("stripe_customer_id")
+      .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!subRecord?.stripe_customer_id) {
-      return NextResponse.json({ synced: false, message: "No Stripe customer found" });
+    // If no subscription record exists, we need to check if there's a Stripe customer
+    // for this user by searching Stripe by email
+    let stripeCustomerId = subRecord?.stripe_customer_id;
+    
+    if (!stripeCustomerId) {
+      // Try to find customer in Stripe by email
+      const customers = await stripe.customers.list({
+        email: user.email,
+        limit: 1,
+      });
+      
+      if (customers.data.length > 0) {
+        stripeCustomerId = customers.data[0].id;
+        
+        // Create subscription record if it doesn't exist
+        if (!subRecord) {
+          const { error: insertError } = await supabaseAdmin
+            .from("user_subscriptions")
+            .insert({
+              user_id: user.id,
+              stripe_customer_id: stripeCustomerId,
+              tier: "free",
+              status: "active",
+            });
+          
+          if (insertError) {
+            console.error("Error creating subscription record:", insertError);
+          }
+        } else {
+          // Update existing record with customer ID
+          await supabaseAdmin
+            .from("user_subscriptions")
+            .update({ stripe_customer_id: stripeCustomerId })
+            .eq("user_id", user.id);
+        }
+      } else {
+        return NextResponse.json({ synced: false, message: "No Stripe customer found" });
+      }
     }
 
     // Fetch subscriptions from Stripe
     const subscriptions = await stripe.subscriptions.list({
-      customer: subRecord.stripe_customer_id,
+      customer: stripeCustomerId,
       status: "all",
       limit: 1,
     });

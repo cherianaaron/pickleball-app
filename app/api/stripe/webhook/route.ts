@@ -182,9 +182,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     cancel_at_period_end: boolean;
   };
 
+  // Use upsert to handle case where record doesn't exist yet
   const { error: updateError } = await supabaseAdmin
     .from("user_subscriptions")
-    .update({
+    .upsert({
+      user_id: userId,
+      stripe_customer_id: customerId,
       stripe_subscription_id: subscription.id,
       stripe_price_id: subscription.items.data[0]?.price.id,
       tier: tier,
@@ -200,8 +203,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
         ? new Date(subData.trial_end * 1000).toISOString()
         : null,
       cancel_at_period_end: subData.cancel_at_period_end || false,
-    })
-    .eq("stripe_customer_id", customerId);
+    }, { onConflict: 'user_id' });
 
   if (updateError) {
     console.error("Error updating subscription:", updateError);

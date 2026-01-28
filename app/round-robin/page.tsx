@@ -248,12 +248,13 @@ export default function RoundRobinPage() {
         
         if (collaborations && collaborations.length > 0) {
           // Verify the tournament is still active (not in playoffs)
+          // Use maybeSingle() since tournament may not exist or may be in playoffs
           const { data: tournament, error: tournamentError } = await supabase
             .from("round_robin_tournaments")
             .select("id, name, is_playoffs_started")
             .eq("id", collaborations[0].tournament_id)
             .eq("is_playoffs_started", false)
-            .single();
+            .maybeSingle();
           
           if (tournamentError) {
             console.error("Error checking collaborated tournament:", tournamentError);
