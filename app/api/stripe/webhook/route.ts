@@ -125,29 +125,37 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const customerId = subscription.customer as string;
+  try {
+    const customerId = subscription.customer as string;
+    console.log("Processing subscription update for customer:", customerId);
 
-  // Get user ID from customer
-  const customer = await stripe.customers.retrieve(customerId);
-  const userId = (customer as Stripe.Customer).metadata?.user_id;
+    // Get user ID from customer metadata
+    const customer = await stripe.customers.retrieve(customerId);
+    let userId = (customer as Stripe.Customer).metadata?.user_id;
 
-  if (!userId) {
-    // Try to find user by customer ID in our database
-    const { data: existingSub } = await supabaseAdmin
-      .from("user_subscriptions")
-      .select("user_id")
-      .eq("stripe_customer_id", customerId)
-      .single();
+    if (!userId) {
+      // Try to find user by customer ID in our database
+      const { data: existingSub, error: findError } = await supabaseAdmin
+        .from("user_subscriptions")
+        .select("user_id")
+        .eq("stripe_customer_id", customerId)
+        .single();
 
-    if (!existingSub) {
-      console.error("Could not find user for customer:", customerId);
-      return;
+      if (findError || !existingSub) {
+        console.error("Could not find user for customer:", customerId, findError);
+        return;
+      }
+      userId = existingSub.user_id;
     }
-  }
 
-  const tier = subscription.metadata?.tier || 
-    (subscription.items.data[0]?.price.metadata?.tier) ||
-    "club"; // Default to club if not specified
+    console.log("Found user:", userId);
+
+    // Determine tier from metadata or default
+    const tier = subscription.metadata?.tier || 
+      (subscription.items.data[0]?.price.metadata?.tier as string) ||
+      "club"; // Default to club if not specified
+    
+    console.log("Determined tier:", tier);
 
   // Determine status
   let status: string;
@@ -174,7 +182,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     cancel_at_period_end: boolean;
   };
 
-  await supabaseAdmin
+  const { error: updateError } = await supabaseAdmin
     .from("user_subscriptions")
     .update({
       stripe_subscription_id: subscription.id,
@@ -182,14 +190,25 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       tier: tier,
       status: status,
       billing_interval: interval,
-      current_period_start: new Date(subData.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subData.current_period_end * 1000).toISOString(),
+      current_period_start: subData.current_period_start 
+        ? new Date(subData.current_period_start * 1000).toISOString()
+        : null,
+      current_period_end: subData.current_period_end
+        ? new Date(subData.current_period_end * 1000).toISOString()
+        : null,
       trial_end: subData.trial_end
         ? new Date(subData.trial_end * 1000).toISOString()
         : null,
-      cancel_at_period_end: subData.cancel_at_period_end,
+      cancel_at_period_end: subData.cancel_at_period_end || false,
     })
     .eq("stripe_customer_id", customerId);
+
+  if (updateError) {
+    console.error("Error updating subscription:", updateError);
+    throw updateError;
+  }
+
+  console.log("Successfully updated subscription in database");
 
   // Track subscription update in PostHog (get user_id from existing subscription record)
   const { data: subRecord } = await supabaseAdmin
@@ -213,6 +232,10 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   }
 
   console.log(`Subscription updated for customer ${customerId}, status: ${status}`);
+  } catch (error) {
+    console.error("Error in handleSubscriptionUpdated:", error);
+    throw error;
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
