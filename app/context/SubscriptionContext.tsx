@@ -136,19 +136,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           stripeCustomerId: data.stripe_customer_id,
         });
       } else {
-        // No subscription record, create one with free tier
-        const { error: insertError } = await supabase
-          .from("user_subscriptions")
-          .insert({
-            user_id: user.id,
-            tier: "free",
-            status: "active",
-          });
-
-        if (insertError) {
-          console.error("Error creating subscription record:", insertError);
-        }
-
+        // No subscription record exists yet - user is on free tier
+        // Don't try to insert from client (server will create when needed)
+        console.log("No subscription record found, using default free tier");
         setSubscription(defaultSubscription);
       }
     } catch (err) {
