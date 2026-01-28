@@ -350,7 +350,6 @@ export default function Navigation() {
                   Sign In
                 </Link>
               )}
-            </div>
           </div>
 
           {/* Mobile Navigation */}
