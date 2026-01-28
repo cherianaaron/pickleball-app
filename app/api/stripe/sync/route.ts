@@ -147,6 +147,23 @@ export async function POST(request: NextRequest) {
       cancel_at_period_end: boolean;
     };
 
+    // Log the raw subscription data for debugging
+    console.log("Subscription raw data:", {
+      current_period_start: subData.current_period_start,
+      current_period_end: subData.current_period_end,
+      trial_end: subData.trial_end,
+      // Also check if they exist directly on subscription
+      sub_current_period_start: (subscription as any).current_period_start,
+      sub_current_period_end: (subscription as any).current_period_end,
+    });
+
+    // For trials, if current_period is missing, use trial dates
+    // trial_start might be the subscription's start_date or created timestamp
+    const periodStart = subData.current_period_start || (subscription as any).start_date || (subscription as any).created;
+    const periodEnd = subData.current_period_end || subData.trial_end;
+
+    console.log("Using period values:", { periodStart, periodEnd });
+
     // Update the database
     const { error: updateError } = await supabaseAdmin
       .from("user_subscriptions")
@@ -156,11 +173,11 @@ export async function POST(request: NextRequest) {
         tier: tier,
         status: status,
         billing_interval: interval,
-        current_period_start: subData.current_period_start
-          ? new Date(subData.current_period_start * 1000).toISOString()
+        current_period_start: periodStart
+          ? new Date(periodStart * 1000).toISOString()
           : null,
-        current_period_end: subData.current_period_end
-          ? new Date(subData.current_period_end * 1000).toISOString()
+        current_period_end: periodEnd
+          ? new Date(periodEnd * 1000).toISOString()
           : null,
         trial_end: subData.trial_end
           ? new Date(subData.trial_end * 1000).toISOString()
