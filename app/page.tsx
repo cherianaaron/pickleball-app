@@ -5,11 +5,28 @@ import { useTournament } from "./context/TournamentContext";
 import { useAuth } from "./context/AuthContext";
 import LoadingSpinner from "./components/LoadingSpinner";
 import ErrorMessage from "./components/ErrorMessage";
+import PublicLandingPage from "./components/PublicLandingPage";
+import { RoundRobinIcon, BracketIcon, SettingsIcon, HowItWorksIcon } from "./components/Icons";
 
 export default function Home() {
   const { tournament, loading, error, generateBracket, resetTournament } = useTournament();
   const { user, loading: authLoading } = useAuth();
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Loading..." />
+      </div>
+    );
+  }
+
+  // Show public landing page for non-authenticated users
+  if (!user) {
+    return <PublicLandingPage />;
+  }
+
+  // Below is for authenticated users only
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -59,9 +76,10 @@ export default function Home() {
                   <div className="w-full">
                     <Link
                       href="/faq"
-                      className="w-full block px-6 py-3 rounded-2xl text-base font-semibold bg-white/10 backdrop-blur-sm text-white border border-lime-400/30 hover:bg-white/20 hover:border-lime-400/50 transition-all duration-300 text-center"
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-base font-semibold bg-white/10 backdrop-blur-sm text-white border border-lime-400/30 hover:bg-white/20 hover:border-lime-400/50 transition-all duration-300"
                     >
-                      📖 New here? Learn How It Works
+                      <HowItWorksIcon size={20} />
+                      <span>New here? Learn How It Works</span>
                     </Link>
                   </div>
 
@@ -72,29 +90,15 @@ export default function Home() {
                     <div className="flex-1 h-px bg-white/20"></div>
                   </div>
 
-                  {/* Login prompt if not signed in */}
-                  {!user && !authLoading && (
-                    <div className="w-full p-4 rounded-2xl bg-lime-400/10 border border-lime-400/30 mb-2">
-                      <p className="text-white/80 text-sm mb-3 text-center">
-                        🔐 Sign in to create and save your tournaments
-                      </p>
-                      <Link
-                        href="/login"
-                        className="w-full block px-6 py-3 rounded-xl text-base font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 text-center hover:scale-105 active:scale-95 transition-all duration-300"
-                      >
-                        Sign In to Get Started
-                      </Link>
-                    </div>
-                  )}
-
                   {/* Round Robin Option */}
                   <div className="w-full text-center">
                     <p className="text-white/70 text-lg mb-3">Create a Round Robin Tournament</p>
                     <Link
-                      href={user ? "/round-robin" : "/login?redirect=/round-robin"}
-                      className="w-full block px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg shadow-orange-400/30 hover:shadow-orange-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+                      href="/round-robin"
+                      className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg shadow-orange-400/30 hover:shadow-orange-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
                     >
-                      🔄 Round Robin
+                      <RoundRobinIcon size={24} />
+                      <span>Round Robin</span>
                     </Link>
                   </div>
 
@@ -109,10 +113,11 @@ export default function Home() {
                   <div className="w-full text-center">
                     <p className="text-white/70 text-lg mb-3">Create a Bracket (Single Elimination)</p>
                     <Link
-                      href={user ? "/players" : "/login?redirect=/players"}
-                      className="w-full block px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
+                      href="/players"
+                      className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
                     >
-                      🏆 Bracket
+                      <BracketIcon size={24} />
+                      <span>Bracket</span>
                     </Link>
                   </div>
 
@@ -120,9 +125,10 @@ export default function Home() {
                   <div className="w-full pt-4">
                     <Link
                       href="/settings"
-                      className="w-full block px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300 text-center"
+                      className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
                     >
-                      ⚙️ Settings
+                      <SettingsIcon size={20} />
+                      <span>Settings</span>
                     </Link>
                   </div>
                 </>
@@ -130,15 +136,17 @@ export default function Home() {
                 <>
                   <Link
                     href="/bracket"
-                    className="w-full px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300 text-center"
+                    className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300"
                   >
-                    📊 View Bracket
+                    <BracketIcon size={24} />
+                    <span>View Bracket</span>
                   </Link>
                   <button
                     onClick={resetTournament}
-                    className="w-full px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
+                    className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-lg font-semibold bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-300"
                   >
-                    🔄 New Tournament
+                    <RoundRobinIcon size={20} />
+                    <span>New Tournament</span>
                   </button>
                 </>
               )}

@@ -125,7 +125,8 @@ export default function Navigation() {
   const menuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const links: { href: string; label: string; icon: IconKey }[] = [
+  // Different navigation links based on auth state
+  const authenticatedLinks: { href: string; label: string; icon: IconKey }[] = [
     { href: "/", label: "Home", icon: "home" },
     { href: "/players", label: "Players", icon: "players" },
     { href: "/round-robin", label: "Round Robin", icon: "roundRobin" },
@@ -136,6 +137,13 @@ export default function Navigation() {
     { href: "/faq", label: "How It Works", icon: "howItWorks" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ];
+
+  const publicLinks: { href: string; label: string; icon?: IconKey }[] = [
+    { href: "/features", label: "Features" },
+    { href: "/pricing", label: "Pricing" },
+  ];
+
+  const links = user ? authenticatedLinks : publicLinks;
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -212,6 +220,7 @@ export default function Navigation() {
           <div className="hidden sm:flex items-center gap-1 ml-6 flex-nowrap">
             {links.map((link) => {
               const isActive = pathname === link.href;
+              const icon = 'icon' in link && link.icon ? NavIcons[link.icon as IconKey] : null;
               return (
                 <Link
                   key={link.href}
@@ -225,7 +234,7 @@ export default function Navigation() {
                     }
                   `}
                 >
-                  {NavIcons[link.icon]}
+                  {icon}
                   <span>{link.label}</span>
                 </Link>
               );
@@ -308,7 +317,7 @@ export default function Navigation() {
               ) : (
                 <Link
                   href="/login"
-                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-300 whitespace-nowrap"
+                  className="px-6 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 hover:scale-105 active:scale-95 transition-all duration-300 whitespace-nowrap"
                 >
                   Sign In
                 </Link>
@@ -330,7 +339,7 @@ export default function Navigation() {
               aria-label="Toggle navigation menu"
               aria-expanded={isMobileMenuOpen}
             >
-              {NavIcons[currentPage.icon]}
+              {'icon' in currentPage && currentPage.icon ? NavIcons[currentPage.icon as IconKey] : null}
               <span>{currentPage.label}</span>
               <span className={`transition-transform duration-300 ${isMobileMenuOpen ? "rotate-180" : ""}`}>
                 ▼
@@ -342,6 +351,7 @@ export default function Navigation() {
               <div className="absolute right-0 top-full mt-2 w-56 bg-gradient-to-br from-emerald-900 to-teal-900 rounded-2xl border border-lime-400/20 shadow-xl shadow-black/30 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 {links.map((link) => {
                   const isActive = pathname === link.href;
+                  const icon = 'icon' in link && link.icon ? NavIcons[link.icon as IconKey] : null;
                   return (
                     <Link
                       key={link.href}
@@ -355,7 +365,7 @@ export default function Navigation() {
                         }
                       `}
                     >
-                      <span className="w-5 h-5 flex items-center justify-center">{NavIcons[link.icon]}</span>
+                      {icon && <span className="w-5 h-5 flex items-center justify-center">{icon}</span>}
                       <span>{link.label}</span>
                       {isActive && <span className="ml-auto text-xs">●</span>}
                     </Link>
