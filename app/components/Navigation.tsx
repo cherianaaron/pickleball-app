@@ -206,7 +206,7 @@ export default function Navigation() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-900 backdrop-blur-lg border-b border-lime-400/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 relative">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center shadow-lg shadow-lime-400/30 group-hover:shadow-lime-400/50 transition-shadow p-1.5">
               <img src="/pickleball.svg" alt="PickleBracket" className="w-full h-full" />
@@ -216,9 +216,9 @@ export default function Navigation() {
             </span>
           </Link>
 
-          {/* Desktop Navigation - Center links for public, right-aligned for auth */}
+          {/* Desktop Navigation - Center links for public (absolute positioned for true center) */}
           {!user && !loading && (
-            <div className="hidden sm:flex items-center justify-center flex-1 gap-4">
+            <div className="hidden sm:flex items-center justify-center gap-4 absolute left-1/2 -translate-x-1/2">
               {links.map((link) => {
                 const isActive = pathname === link.href;
                 return (
