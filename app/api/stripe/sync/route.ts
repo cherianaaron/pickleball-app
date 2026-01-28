@@ -107,6 +107,14 @@ export async function POST(request: NextRequest) {
     // Get billing interval
     const interval = subscription.items.data[0]?.price.recurring?.interval || "month";
 
+    // Cast subscription to access properties (Stripe API version compatibility)
+    const subData = subscription as unknown as {
+      current_period_start: number;
+      current_period_end: number;
+      trial_end: number | null;
+      cancel_at_period_end: boolean;
+    };
+
     // Update the database
     await supabaseAdmin
       .from("user_subscriptions")
@@ -116,12 +124,12 @@ export async function POST(request: NextRequest) {
         tier: tier,
         status: status,
         billing_interval: interval,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        trial_end: subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
+        current_period_start: new Date(subData.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(subData.current_period_end * 1000).toISOString(),
+        trial_end: subData.trial_end
+          ? new Date(subData.trial_end * 1000).toISOString()
           : null,
-        cancel_at_period_end: subscription.cancel_at_period_end,
+        cancel_at_period_end: subData.cancel_at_period_end,
       })
       .eq("user_id", user.id);
 
@@ -129,8 +137,8 @@ export async function POST(request: NextRequest) {
       synced: true, 
       tier, 
       status,
-      trial_end: subscription.trial_end 
-        ? new Date(subscription.trial_end * 1000).toISOString() 
+      trial_end: subData.trial_end 
+        ? new Date(subData.trial_end * 1000).toISOString() 
         : null 
     });
   } catch (error) {
