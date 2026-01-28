@@ -123,11 +123,11 @@ export function getRequiredTier(feature: keyof TierLimits): SubscriptionTier {
 // Pricing display (for UI) - safe for client-side use
 export const PRICING = {
   club: {
-    monthly: 4.99,
-    yearly: 49.90, // 2 months free (10 months × $4.99)
+    monthly: 5, // $5/month
+    yearly: 48, // $4/month billed annually (saves $12/year)
   },
   league: {
-    monthly: 9.99,
-    yearly: 99.90, // 2 months free (10 months × $9.99)
+    monthly: 10, // $10/month
+    yearly: 96, // $8/month billed annually (saves $24/year)
   },
 };
