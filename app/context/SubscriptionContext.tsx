@@ -37,6 +37,7 @@ interface SubscriptionContextType {
   canUse: (feature: keyof TierLimits) => boolean;
   checkLimit: (feature: keyof TierLimits, currentValue: number) => boolean;
   refreshSubscription: () => Promise<void>;
+  syncSubscription: () => Promise<boolean | undefined>;
   createCheckoutSession: (
     tier: "club" | "league",
     interval: "month" | "year"
@@ -159,12 +160,45 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  // Sync subscription from Stripe (useful when webhooks don't fire)
+  const syncSubscription = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch("/api/stripe/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (response.ok) {
+        // Refetch subscription after sync
+        await fetchSubscription();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Error syncing subscription:", err);
+      return false;
+    }
+  }, [user, fetchSubscription]);
+
   // Fetch subscription when user changes
   useEffect(() => {
     if (!authLoading) {
       fetchSubscription();
     }
   }, [user, authLoading, fetchSubscription]);
+
+  // Auto-sync when returning from Stripe checkout
+  useEffect(() => {
+    if (!authLoading && user) {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("success") === "true") {
+        // User just returned from successful checkout, sync with Stripe
+        syncSubscription();
+      }
+    }
+  }, [authLoading, user, syncSubscription]);
 
   // Computed values
   const limits = TIER_LIMITS[subscription.tier];
@@ -252,6 +286,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     canUse,
     checkLimit,
     refreshSubscription: fetchSubscription,
+    syncSubscription,
     createCheckoutSession,
     createPortalSession,
   };
