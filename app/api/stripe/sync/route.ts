@@ -3,14 +3,22 @@ import { stripe } from "@/app/lib/stripe";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
-// Create a Supabase client with service role for server-side operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: NextRequest) {
   try {
+    // Check for required env vars
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("Missing SUPABASE_SERVICE_ROLE_KEY");
+      return NextResponse.json(
+        { message: "Server configuration error", error: "Missing service role key" },
+        { status: 500 }
+      );
+    }
+
+    // Create a Supabase client with service role for server-side operations
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
     // Create a Supabase client that can read the auth cookies
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,30 +94,28 @@ export async function POST(request: NextRequest) {
     });
 
     // Determine tier from metadata or price
-    let tier = subscription.metadata?.tier;
+    let tier = subscription.metadata?.tier as string | undefined;
     if (!tier) {
       // Try to determine from price ID
-      const priceId = subscription.items.data[0]?.price.id || "";
-      const priceLookupKey = subscription.items.data[0]?.price.lookup_key || "";
+      const priceId = (subscription.items.data[0]?.price.id || "").toLowerCase();
+      const priceMetadata = subscription.items.data[0]?.price.metadata as Record<string, string> | undefined;
       
-      if (priceId.toLowerCase().includes("club") || priceLookupKey.toLowerCase().includes("club")) {
+      if (priceId.includes("club")) {
         tier = "club";
-      } else if (priceId.toLowerCase().includes("league") || priceLookupKey.toLowerCase().includes("league")) {
+      } else if (priceId.includes("league")) {
         tier = "league";
+      } else if (priceMetadata?.tier) {
+        tier = priceMetadata.tier;
       } else {
-        // Check price metadata
-        tier = subscription.items.data[0]?.price.metadata?.tier;
-        
         // Last resort: check by price amount (in cents)
-        if (!tier) {
-          const amount = subscription.items.data[0]?.price.unit_amount || 0;
-          // Club: $5/mo = 500 cents, $48/yr = 4800 cents
-          // League: $10/mo = 1000 cents, $96/yr = 9600 cents
-          if (amount <= 500 || amount === 4800) {
-            tier = "club";
-          } else {
-            tier = "league";
-          }
+        const amount = subscription.items.data[0]?.price.unit_amount || 0;
+        console.log("Price amount:", amount);
+        // Club: $5/mo = 500 cents, $48/yr = 4800 cents
+        // League: $10/mo = 1000 cents, $96/yr = 9600 cents
+        if (amount <= 500 || amount === 4800) {
+          tier = "club";
+        } else {
+          tier = "league";
         }
       }
     }
@@ -142,7 +148,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Update the database
-    await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from("user_subscriptions")
       .update({
         stripe_subscription_id: subscription.id,
@@ -159,6 +165,16 @@ export async function POST(request: NextRequest) {
       })
       .eq("user_id", user.id);
 
+    if (updateError) {
+      console.error("Database update error:", updateError);
+      return NextResponse.json(
+        { message: "Failed to update database", error: updateError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log("Successfully updated subscription for user:", user.id);
+
     return NextResponse.json({ 
       synced: true, 
       tier, 
@@ -169,8 +185,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Sync error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { message: "Failed to sync subscription" },
+      { message: "Failed to sync subscription", error: errorMessage },
       { status: 500 }
     );
   }
