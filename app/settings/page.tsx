@@ -58,6 +58,10 @@ function SettingsContent() {
   const [submittingBug, setSubmittingBug] = useState(false);
   const [bugSubmitted, setBugSubmitted] = useState(false);
   const [bugError, setBugError] = useState<string | null>(null);
+  
+  // Manage subscription state
+  const [managingSubscription, setManagingSubscription] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
   // Load settings on mount - prioritize tournament settings, fall back to localStorage
   useEffect(() => {
@@ -445,12 +449,35 @@ function SettingsContent() {
                   ) : (
                     <button
                       onClick={async () => {
-                        const url = await createPortalSession();
-                        if (url) window.location.href = url;
+                        setManagingSubscription(true);
+                        setSubscriptionError(null);
+                        try {
+                          const url = await createPortalSession();
+                          if (url) {
+                            window.location.href = url;
+                          } else {
+                            setSubscriptionError("Could not open subscription portal. Please try again.");
+                            setManagingSubscription(false);
+                          }
+                        } catch (err) {
+                          setSubscriptionError("Failed to open subscription portal.");
+                          setManagingSubscription(false);
+                        }
                       }}
-                      className="w-full py-3 px-4 rounded-xl font-medium bg-white/10 text-white hover:bg-white/20 transition-all"
+                      disabled={managingSubscription}
+                      className="w-full py-3 px-4 rounded-xl font-medium bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span className="inline-flex items-center gap-2"><SettingsIcon size={18} /> Manage Subscription</span>
+                      <span className="inline-flex items-center gap-2">
+                        {managingSubscription ? (
+                          <>
+                            <span className="animate-spin">⏳</span> Opening Portal...
+                          </>
+                        ) : (
+                          <>
+                            <SettingsIcon size={18} /> Manage Subscription
+                          </>
+                        )}
+                      </span>
                     </button>
                   )}
                   
@@ -461,6 +488,12 @@ function SettingsContent() {
                     >
                       ⬆️ Upgrade to League
                     </Link>
+                  )}
+                  
+                  {subscriptionError && (
+                    <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">
+                      {subscriptionError}
+                    </div>
                   )}
                 </div>
               </>
