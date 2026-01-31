@@ -38,6 +38,9 @@ function SettingsContent() {
   const searchParams = useSearchParams();
   const success = searchParams.get("success") === "true";
   
+  // Use browser client that shares auth state
+  const supabase = useMemo(() => createClient(), []);
+  
   // Initialize with defaults (will be updated from localStorage/tournament on mount)
   const [scoreLimit, setScoreLimit] = useState(11);
   const [winByTwo, setWinByTwo] = useState(true);

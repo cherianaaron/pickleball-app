@@ -12,6 +12,10 @@ import posthog from "posthog-js";
 export default function JoinTournamentPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  
+  // Use browser client that shares auth state
+  const supabase = useMemo(() => createClient(), []);
+  
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

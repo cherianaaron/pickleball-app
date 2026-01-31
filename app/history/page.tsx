@@ -60,6 +60,10 @@ export default function HistoryPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { tournament: currentTournament, loadTournamentById, resetTournament } = useTournament();
+  
+  // Use browser client that shares auth state
+  const supabase = useMemo(() => createClient(), []);
+  
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
