@@ -256,7 +256,7 @@ export default function JoinTournamentPage() {
                 type="text"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                placeholder="Enter code (e.g., ABC123)"
+                placeholder="e.g., XJD3HD"
                 maxLength={8}
                 className="w-full px-4 py-4 rounded-xl bg-white/10 border border-white/20 text-white text-center text-2xl font-mono tracking-widest placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:border-transparent transition-all uppercase"
               />
