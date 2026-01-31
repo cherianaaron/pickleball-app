@@ -529,6 +529,12 @@ function SettingsContent() {
               <div className="flex-1">
                 <h3 className="text-xl font-semibold text-white">Report a Bug</h3>
                 <p className="text-white/50 text-sm">Help us improve by reporting issues</p>
+                <p className="text-white/40 text-sm mt-1">
+                  Or email us at{" "}
+                  <a href="mailto:support@picklebracket.app" className="text-lime-400 hover:underline">
+                    support@picklebracket.app
+                  </a>
+                </p>
               </div>
             </div>
 
