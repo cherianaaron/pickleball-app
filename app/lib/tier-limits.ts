@@ -80,7 +80,6 @@ export const TIER_FEATURES: Record<SubscriptionTier, string[]> = {
     "5 collaborators per tournament",
     "1-year history",
     "No ads",
-    "Export to PDF/CSV",
   ],
   league: [
     "Unlimited tournaments",
@@ -89,9 +88,6 @@ export const TIER_FEATURES: Record<SubscriptionTier, string[]> = {
     "Unlimited collaborators",
     "Unlimited history",
     "No ads",
-    "Export to PDF/CSV",
-    "Custom branding",
-    "Advanced stats",
     "Priority support",
   ],
 };
