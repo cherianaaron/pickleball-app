@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { useAuth } from "./AuthContext";
+import { useSubscription } from "./SubscriptionContext";
 import posthog from "posthog-js";
 
 export interface Player {
@@ -139,6 +140,7 @@ function calculateRoundsForPlayers(n: number): number {
 
 export function TournamentProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { limits } = useSubscription();
   
   // Use browser client that shares auth state
   const supabase = useMemo(() => createClient(), []);
@@ -867,6 +869,41 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       setError(null);
       setLoading(true);
 
+      // Check tournament limit before creating
+      const maxTournaments = limits.maxActiveTournaments;
+      
+      if (maxTournaments !== Infinity) {
+        // Count active bracket tournaments (not complete)
+        const { count: bracketCount, error: bracketCountError } = await supabase
+          .from("tournaments")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("is_complete", false);
+        
+        if (bracketCountError) {
+          console.error("Error counting bracket tournaments:", bracketCountError);
+        }
+        
+        // Count active round-robin tournaments (not moved to playoffs)
+        const { count: rrCount, error: rrCountError } = await supabase
+          .from("round_robin_tournaments")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("is_playoffs_started", false);
+        
+        if (rrCountError) {
+          console.error("Error counting round-robin tournaments:", rrCountError);
+        }
+        
+        const totalActiveTournaments = (bracketCount || 0) + (rrCount || 0);
+        
+        if (totalActiveTournaments >= maxTournaments) {
+          setError(`You've reached the limit of ${maxTournaments} active tournament${maxTournaments === 1 ? '' : 's'} for your plan. Please complete or delete an existing tournament, or upgrade your plan.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       // Get user's saved settings (persisted across tournaments) or use defaults
       const userSettings = getUserSettings();
 
@@ -919,7 +956,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, limits.maxActiveTournaments, supabase]);
 
   const startMatchTimer = useCallback(async (matchId: string) => {
     if (!tournament) return;
