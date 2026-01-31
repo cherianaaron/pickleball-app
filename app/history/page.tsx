@@ -13,6 +13,7 @@ import { HistoryIcon, LockIcon } from "../components/Icons";
 interface TournamentSummary {
   id: string;
   name: string;
+  type: "bracket" | "round-robin";
   isStarted: boolean;
   isComplete: boolean;
   rounds: number;
@@ -44,6 +45,7 @@ interface Match {
 interface TournamentDetail {
   id: string;
   name: string;
+  type: "bracket" | "round-robin";
   isStarted: boolean;
   isComplete: boolean;
   rounds: number;
@@ -54,6 +56,11 @@ interface TournamentDetail {
   createdAt: string;
   players: Player[];
   matches: Match[];
+  // Round-robin specific fields
+  numCourts?: number;
+  poolCount?: number;
+  isPoolPlayComplete?: boolean;
+  isPlayoffsStarted?: boolean;
 }
 
 export default function HistoryPage() {
@@ -69,33 +76,72 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: "bracket" | "round-robin" } | null>(null);
   const [deleting, setDeleting] = useState(false);
   
   // Ref for detail section to scroll to on mobile
   const detailSectionRef = useRef<HTMLDivElement>(null);
 
-  const handleLoadTournament = async (tournamentId: string) => {
-    await loadTournamentById(tournamentId);
-    router.push("/bracket");
+  const handleLoadTournament = async (tournamentId: string, type: "bracket" | "round-robin") => {
+    if (type === "bracket") {
+      await loadTournamentById(tournamentId);
+      router.push("/bracket");
+    } else {
+      // For round-robin, navigate to the round-robin page
+      // It will auto-load based on localStorage
+      localStorage.setItem("activeRoundRobinTournamentId", tournamentId);
+      router.push("/round-robin");
+    }
   };
 
-  const handleDeleteTournament = async (tournamentId: string) => {
+  const handleDeleteTournament = async (tournamentId: string, type: "bracket" | "round-robin") => {
     try {
       setDeleting(true);
 
-      // If deleting the current tournament, reset first
-      if (currentTournament?.id === tournamentId) {
-        await resetTournament();
+      if (type === "bracket") {
+        // If deleting the current bracket tournament, reset first
+        if (currentTournament?.id === tournamentId) {
+          await resetTournament();
+        }
+
+        // Delete bracket tournament (cascade will delete players and matches)
+        const { error: deleteError } = await supabase
+          .from("tournaments")
+          .delete()
+          .eq("id", tournamentId);
+
+        if (deleteError) throw deleteError;
+      } else {
+        // Delete round-robin tournament
+        // First get pool IDs to delete matches
+        const { data: pools } = await supabase
+          .from("round_robin_pools")
+          .select("id")
+          .eq("tournament_id", tournamentId);
+        
+        const poolIds = (pools || []).map((p: { id: string }) => p.id);
+        
+        // Delete matches, teams, pools, then tournament (in order due to foreign keys)
+        if (poolIds.length > 0) {
+          await supabase.from("round_robin_matches").delete().in("pool_id", poolIds);
+        }
+        await supabase.from("round_robin_teams").delete().eq("tournament_id", tournamentId);
+        await supabase.from("round_robin_pools").delete().eq("tournament_id", tournamentId);
+        await supabase.from("round_robin_collaborators").delete().eq("tournament_id", tournamentId);
+        
+        const { error: deleteError } = await supabase
+          .from("round_robin_tournaments")
+          .delete()
+          .eq("id", tournamentId);
+
+        if (deleteError) throw deleteError;
+        
+        // Clear localStorage if this was the active round-robin
+        const activeRR = localStorage.getItem("activeRoundRobinTournamentId");
+        if (activeRR === tournamentId) {
+          localStorage.removeItem("activeRoundRobinTournamentId");
+        }
       }
-
-      // Delete tournament (cascade will delete players and matches)
-      const { error: deleteError } = await supabase
-        .from("tournaments")
-        .delete()
-        .eq("id", tournamentId);
-
-      if (deleteError) throw deleteError;
 
       // Clear selection if it was the deleted tournament
       if (selectedTournament?.id === tournamentId) {
@@ -132,56 +178,77 @@ export default function HistoryPage() {
         return;
       }
 
-      // Fetch owned tournaments
-      const { data: ownedData, error: ownedError } = await supabase
-        .from("tournaments")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (ownedError) throw ownedError;
-
-      const allTournaments = (ownedData || []).map(t => ({ ...t, isCollaborator: false }));
-
-      if (allTournaments.length === 0) {
-        setTournaments([]);
-        return;
-      }
-
-      // Get all tournament IDs
-      const tournamentIds = allTournaments.map(t => t.id);
-
-      // Batch fetch all players and matches in parallel (much faster than N+1 queries)
-      const [playersResult, matchesResult] = await Promise.all([
+      // Fetch bracket tournaments and round-robin tournaments in parallel
+      const [bracketResult, roundRobinResult] = await Promise.all([
         supabase
-          .from("players")
-          .select("id, tournament_id, name")
-          .in("tournament_id", tournamentIds),
+          .from("tournaments")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
         supabase
-          .from("matches")
-          .select("id, tournament_id")
-          .in("tournament_id", tournamentIds)
+          .from("round_robin_tournaments")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50)
       ]);
 
-      // Create lookup maps for counts
+      if (bracketResult.error) throw bracketResult.error;
+      if (roundRobinResult.error) throw roundRobinResult.error;
+
+      const bracketTournaments = (bracketResult.data || []).map(t => ({ ...t, tournamentType: "bracket" as const }));
+      const roundRobinTournaments = (roundRobinResult.data || []).map(t => ({ ...t, tournamentType: "round-robin" as const }));
+
+      // Get bracket tournament IDs for batch fetching players/matches
+      const bracketIds = bracketTournaments.map(t => t.id);
+      const roundRobinIds = roundRobinTournaments.map(t => t.id);
+
+      // Batch fetch all players, matches, teams, and round-robin matches in parallel
+      const [playersResult, matchesResult, teamsResult, rrMatchesResult] = await Promise.all([
+        bracketIds.length > 0 ? supabase
+          .from("players")
+          .select("id, tournament_id, name")
+          .in("tournament_id", bracketIds) : { data: [] },
+        bracketIds.length > 0 ? supabase
+          .from("matches")
+          .select("id, tournament_id")
+          .in("tournament_id", bracketIds) : { data: [] },
+        roundRobinIds.length > 0 ? supabase
+          .from("round_robin_teams")
+          .select("id, tournament_id, name")
+          .in("tournament_id", roundRobinIds) : { data: [] },
+        roundRobinIds.length > 0 ? supabase
+          .from("round_robin_matches")
+          .select("id, pool_id")
+          .in("pool_id", await getPoolIds(roundRobinIds)) : { data: [] }
+      ]);
+
+      // Create lookup maps for bracket tournaments
       const playerCountMap = new Map<string, number>();
-      const playerNameMap = new Map<string, string>(); // player_id -> name
+      const playerNameMap = new Map<string, string>();
       
-      (playersResult.data || []).forEach(p => {
+      (playersResult.data || []).forEach((p: { id: string; tournament_id: string; name: string }) => {
         playerCountMap.set(p.tournament_id, (playerCountMap.get(p.tournament_id) || 0) + 1);
         playerNameMap.set(p.id, p.name);
       });
 
       const matchCountMap = new Map<string, number>();
-      (matchesResult.data || []).forEach(m => {
+      (matchesResult.data || []).forEach((m: { id: string; tournament_id: string }) => {
         matchCountMap.set(m.tournament_id, (matchCountMap.get(m.tournament_id) || 0) + 1);
       });
 
-      // Build summaries using the pre-fetched data
-      const summaries: TournamentSummary[] = allTournaments.map(t => ({
+      // Create lookup maps for round-robin tournaments
+      const teamCountMap = new Map<string, number>();
+      (teamsResult.data || []).forEach((t: { id: string; tournament_id: string; name: string }) => {
+        teamCountMap.set(t.tournament_id, (teamCountMap.get(t.tournament_id) || 0) + 1);
+      });
+
+      // Build bracket summaries
+      const bracketSummaries: TournamentSummary[] = bracketTournaments.map(t => ({
         id: t.id,
         name: t.name,
+        type: "bracket" as const,
         isStarted: t.is_started,
         isComplete: t.is_complete,
         rounds: t.rounds || 0,
@@ -189,10 +256,29 @@ export default function HistoryPage() {
         matchCount: matchCountMap.get(t.id) || 0,
         championName: t.champion_id ? playerNameMap.get(t.champion_id) || null : null,
         createdAt: t.created_at,
-        isCollaborator: t.isCollaborator,
+        isCollaborator: false,
       }));
 
-      setTournaments(summaries);
+      // Build round-robin summaries
+      const roundRobinSummaries: TournamentSummary[] = roundRobinTournaments.map(t => ({
+        id: t.id,
+        name: t.name,
+        type: "round-robin" as const,
+        isStarted: true, // Round-robin is always "started" once created
+        isComplete: t.is_playoffs_started, // Complete when moved to playoffs
+        rounds: 0,
+        playerCount: teamCountMap.get(t.id) || 0,
+        matchCount: 0, // We could count matches but it's complex
+        championName: null,
+        createdAt: t.created_at,
+        isCollaborator: false,
+      }));
+
+      // Combine and sort by date
+      const allSummaries = [...bracketSummaries, ...roundRobinSummaries]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      setTournaments(allSummaries);
     } catch (err) {
       console.error("Error loading tournaments:", err);
       setError(err instanceof Error ? err.message : "Failed to load tournaments");
@@ -201,11 +287,84 @@ export default function HistoryPage() {
     }
   };
 
-  const loadTournamentDetail = async (tournamentId: string) => {
+  // Helper function to get pool IDs for round-robin tournaments
+  const getPoolIds = async (tournamentIds: string[]): Promise<string[]> => {
+    if (tournamentIds.length === 0) return [];
+    const { data } = await supabase
+      .from("round_robin_pools")
+      .select("id")
+      .in("tournament_id", tournamentIds);
+    return (data || []).map((p: { id: string }) => p.id);
+  };
+
+  const loadTournamentDetail = async (tournamentId: string, type: "bracket" | "round-robin") => {
     try {
       setDetailLoading(true);
 
-      // Get tournament
+      if (type === "round-robin") {
+        // Load round-robin tournament details
+        const { data: tournament, error: tournamentError } = await supabase
+          .from("round_robin_tournaments")
+          .select("*")
+          .eq("id", tournamentId)
+          .single();
+
+        if (tournamentError) throw tournamentError;
+
+        // Get teams
+        const { data: teams, error: teamsError } = await supabase
+          .from("round_robin_teams")
+          .select("*")
+          .eq("tournament_id", tournamentId)
+          .order("name", { ascending: true });
+
+        if (teamsError) throw teamsError;
+
+        // Get pools
+        const { data: pools, error: poolsError } = await supabase
+          .from("round_robin_pools")
+          .select("*")
+          .eq("tournament_id", tournamentId);
+
+        if (poolsError) throw poolsError;
+
+        // Convert teams to players format for display
+        const players: Player[] = (teams || []).map((t: { id: string; name: string }, index: number) => ({
+          id: t.id,
+          name: t.name,
+          seed: index + 1,
+        }));
+
+        setSelectedTournament({
+          id: tournament.id,
+          name: tournament.name,
+          type: "round-robin",
+          isStarted: true,
+          isComplete: tournament.is_playoffs_started,
+          rounds: 0,
+          championName: null,
+          scoreLimit: tournament.score_limit || 11,
+          winByTwo: true,
+          gameTimerMinutes: null,
+          createdAt: tournament.created_at,
+          players,
+          matches: [],
+          numCourts: tournament.num_courts,
+          poolCount: (pools || []).length,
+          isPoolPlayComplete: tournament.is_pool_play_complete,
+          isPlayoffsStarted: tournament.is_playoffs_started,
+        });
+
+        // Scroll on mobile
+        if (window.innerWidth < 1024 && detailSectionRef.current) {
+          setTimeout(() => {
+            detailSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 100);
+        }
+        return;
+      }
+
+      // Load bracket tournament details
       const { data: tournament, error: tournamentError } = await supabase
         .from("tournaments")
         .select("*")
@@ -258,6 +417,7 @@ export default function HistoryPage() {
       setSelectedTournament({
         id: tournament.id,
         name: tournament.name,
+        type: "bracket",
         isStarted: tournament.is_started,
         isComplete: tournament.is_complete,
         rounds: tournament.rounds || 0,
@@ -353,10 +513,7 @@ export default function HistoryPage() {
             </div>
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Tournament History</h1>
-          <p className="text-white/50">View all past bracket tournaments and their results</p>
-          <p className="text-white/40 text-sm mt-2">
-            💡 Tip: Use Round Robin final standings to seed your bracket tournaments!
-          </p>
+          <p className="text-white/50">View and manage all your tournaments</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -377,7 +534,7 @@ export default function HistoryPage() {
               ) : (
                 tournaments.map((t) => (
                   <div
-                    key={t.id}
+                    key={`${t.type}-${t.id}`}
                     className={`group relative glass rounded-2xl p-4 transition-all hover:scale-[1.02] ${
                       selectedTournament?.id === t.id
                         ? "border-2 border-lime-400 shadow-lg shadow-lime-400/20"
@@ -385,15 +542,23 @@ export default function HistoryPage() {
                     }`}
                   >
                     <button
-                      onClick={() => loadTournamentDetail(t.id)}
+                      onClick={() => loadTournamentDetail(t.id, t.type)}
                       className="w-full text-left"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold text-white truncate">{t.name}</h3>
+                            {/* Tournament type badge */}
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                              t.type === "round-robin" 
+                                ? "bg-orange-400/20 text-orange-400 border border-orange-400/30"
+                                : "bg-blue-400/20 text-blue-400 border border-blue-400/30"
+                            }`}>
+                              {t.type === "round-robin" ? "Round Robin" : "Bracket"}
+                            </span>
                             {t.isCollaborator && (
-                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-400/20 text-orange-400 border border-orange-400/30">
+                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-400/20 text-purple-400 border border-purple-400/30">
                                 Joined
                               </span>
                             )}
@@ -401,7 +566,13 @@ export default function HistoryPage() {
                           <p className="text-white/40 text-xs mt-1">{formatDate(t.createdAt)}</p>
                         </div>
                         <div className="flex-shrink-0">
-                          {t.isComplete ? (
+                          {t.type === "round-robin" ? (
+                            t.isComplete ? (
+                              <span className="text-2xl">✅</span>
+                            ) : (
+                              <span className="text-2xl">🔄</span>
+                            )
+                          ) : t.isComplete ? (
                             <span className="text-2xl">🏆</span>
                           ) : t.isStarted ? (
                             <span className="text-2xl">⚡</span>
@@ -412,11 +583,13 @@ export default function HistoryPage() {
                       </div>
                       <div className="flex items-center gap-3 mt-3 text-sm">
                         <span className="text-white/60">
-                          👥 {t.playerCount}
+                          👥 {t.playerCount} {t.type === "round-robin" ? "teams" : ""}
                         </span>
-                        <span className="text-white/60">
-                          🎮 {t.matchCount}
-                        </span>
+                        {t.type === "bracket" && (
+                          <span className="text-white/60">
+                            🎮 {t.matchCount}
+                          </span>
+                        )}
                         {t.championName && (
                           <span className="text-lime-400 font-medium truncate">
                             👑 {t.championName}
@@ -428,14 +601,14 @@ export default function HistoryPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDeleteConfirm(t.id);
+                        setDeleteConfirm({ id: t.id, type: t.type });
                       }}
                       className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity text-sm"
                       title="Delete tournament"
                     >
                       🗑️
                     </button>
-                    {currentTournament?.id === t.id && (
+                    {currentTournament?.id === t.id && t.type === "bracket" && (
                       <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-0.5 text-xs font-bold bg-lime-400 text-emerald-900 rounded-full shadow-lg">
                         Active
                       </span>
@@ -457,16 +630,39 @@ export default function HistoryPage() {
                 {/* Tournament Header */}
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-white">{selectedTournament.name}</h2>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h2 className="text-2xl font-bold text-white">{selectedTournament.name}</h2>
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                        selectedTournament.type === "round-robin" 
+                          ? "bg-orange-400/20 text-orange-400 border border-orange-400/30"
+                          : "bg-blue-400/20 text-blue-400 border border-blue-400/30"
+                      }`}>
+                        {selectedTournament.type === "round-robin" ? "Round Robin" : "Bracket"}
+                      </span>
+                    </div>
                     <p className="text-white/40 text-sm mt-1">{formatDate(selectedTournament.createdAt)}</p>
-                    {currentTournament?.id === selectedTournament.id && (
+                    {currentTournament?.id === selectedTournament.id && selectedTournament.type === "bracket" && (
                       <span className="inline-block mt-2 px-2 py-1 rounded-full bg-lime-400/20 text-lime-400 text-xs font-medium">
                         ✓ Currently Active
                       </span>
                     )}
                   </div>
                   <div className="text-right space-y-2">
-                    {selectedTournament.isComplete ? (
+                    {selectedTournament.type === "round-robin" ? (
+                      selectedTournament.isPlayoffsStarted ? (
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-400/20 text-lime-400 text-sm font-medium">
+                          <span>✅</span> Moved to Playoffs
+                        </span>
+                      ) : selectedTournament.isPoolPlayComplete ? (
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/20 text-yellow-400 text-sm font-medium">
+                          <span>📊</span> Pool Play Complete
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-400/20 text-orange-400 text-sm font-medium">
+                          <span>🔄</span> Pool Play Active
+                        </span>
+                      )
+                    ) : selectedTournament.isComplete ? (
                       <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-400/20 text-lime-400 text-sm font-medium">
                         <span>🏆</span> Complete
                       </span>
@@ -479,16 +675,16 @@ export default function HistoryPage() {
                         <span>📝</span> Not Started
                       </span>
                     )}
-                    {currentTournament?.id !== selectedTournament.id && (
+                    {(currentTournament?.id !== selectedTournament.id || selectedTournament.type === "round-robin") && (
                       <button
-                        onClick={() => handleLoadTournament(selectedTournament.id)}
+                        onClick={() => handleLoadTournament(selectedTournament.id, selectedTournament.type)}
                         className="block w-full mt-2 px-4 py-2 rounded-xl text-sm font-semibold bg-lime-400 text-emerald-900 hover:bg-lime-300 transition-colors"
                       >
-                        Load This Tournament
+                        {selectedTournament.type === "round-robin" ? "Open Tournament" : "Load This Tournament"}
                       </button>
                     )}
                     <button
-                      onClick={() => setDeleteConfirm(selectedTournament.id)}
+                      onClick={() => setDeleteConfirm({ id: selectedTournament.id, type: selectedTournament.type })}
                       className="block w-full mt-2 px-4 py-2 rounded-xl text-sm font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors border border-red-500/30"
                     >
                       🗑️ Delete Tournament
@@ -512,19 +708,34 @@ export default function HistoryPage() {
                 )}
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className={`grid gap-4 mb-6 ${selectedTournament.type === "round-robin" ? "grid-cols-3" : "grid-cols-3"}`}>
                   <div className="bg-white/5 rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-white">{selectedTournament.players.length}</p>
-                    <p className="text-white/50 text-sm">Players</p>
+                    <p className="text-white/50 text-sm">{selectedTournament.type === "round-robin" ? "Teams" : "Players"}</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-white">{selectedTournament.rounds}</p>
-                    <p className="text-white/50 text-sm">Rounds</p>
-                  </div>
-                  <div className="bg-white/5 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-white">{selectedTournament.matches.length}</p>
-                    <p className="text-white/50 text-sm">Matches</p>
-                  </div>
+                  {selectedTournament.type === "round-robin" ? (
+                    <>
+                      <div className="bg-white/5 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-bold text-white">{selectedTournament.poolCount || 0}</p>
+                        <p className="text-white/50 text-sm">Pools</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-bold text-white">{selectedTournament.numCourts || 0}</p>
+                        <p className="text-white/50 text-sm">Courts</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-white/5 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-bold text-white">{selectedTournament.rounds}</p>
+                        <p className="text-white/50 text-sm">Rounds</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-bold text-white">{selectedTournament.matches.length}</p>
+                        <p className="text-white/50 text-sm">Matches</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Settings Used */}
@@ -537,9 +748,11 @@ export default function HistoryPage() {
                   </p>
                 </div>
 
-                {/* Players */}
+                {/* Players/Teams */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-3">Players</h3>
+                  <h3 className="text-lg font-semibold text-white mb-3">
+                    {selectedTournament.type === "round-robin" ? "Teams" : "Players"}
+                  </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {selectedTournament.players.map((player) => (
                       <div
@@ -557,7 +770,9 @@ export default function HistoryPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-medium truncate">{player.name}</p>
-                          <p className="text-white/40 text-xs">Seed #{player.seed}</p>
+                          {selectedTournament.type === "bracket" && (
+                            <p className="text-white/40 text-xs">Seed #{player.seed}</p>
+                          )}
                         </div>
                         {player.name === selectedTournament.championName && (
                           <span className="text-lg">👑</span>
@@ -567,8 +782,8 @@ export default function HistoryPage() {
                   </div>
                 </div>
 
-                {/* Bracket/Matches */}
-                {selectedTournament.matches.length > 0 && (
+                {/* Bracket/Matches - only for bracket tournaments */}
+                {selectedTournament.type === "bracket" && selectedTournament.matches.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-3">Bracket</h3>
                     <div className="space-y-4">
@@ -643,11 +858,13 @@ export default function HistoryPage() {
               <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-4xl">⚠️</span>
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Delete Tournament?</h3>
+              <h3 className="text-xl font-bold text-white mb-2">
+                Delete {deleteConfirm.type === "round-robin" ? "Round Robin" : "Bracket"} Tournament?
+              </h3>
               <p className="text-white/60 mb-6">
-                This will permanently delete this tournament, including all players, matches, and scores. This action cannot be undone.
+                This will permanently delete this tournament, including all {deleteConfirm.type === "round-robin" ? "teams, pools, and matches" : "players, matches, and scores"}. This action cannot be undone.
               </p>
-              {currentTournament?.id === deleteConfirm && (
+              {currentTournament?.id === deleteConfirm.id && deleteConfirm.type === "bracket" && (
                 <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-3 mb-4">
                   <p className="text-yellow-400 text-sm">
                     ⚠️ This is your currently active tournament. Deleting it will create a new empty tournament.
@@ -663,7 +880,7 @@ export default function HistoryPage() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleDeleteTournament(deleteConfirm)}
+                  onClick={() => handleDeleteTournament(deleteConfirm.id, deleteConfirm.type)}
                   disabled={deleting}
                   className="flex-1 py-3 px-4 rounded-xl font-bold bg-red-500 text-white hover:bg-red-400 transition-colors disabled:opacity-50"
                 >
