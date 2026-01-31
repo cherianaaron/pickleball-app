@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
-import { supabase } from "../lib/supabase";
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo } from "react";
+import { createClient } from "../lib/supabase-browser";
 import { useAuth } from "./AuthContext";
 import posthog from "posthog-js";
 
@@ -139,6 +139,10 @@ function calculateRoundsForPlayers(n: number): number {
 
 export function TournamentProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  
+  // Use browser client that shares auth state
+  const supabase = useMemo(() => createClient(), []);
+  
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(false); // Start as false - no auto-loading
   const [error, setError] = useState<string | null>(null);

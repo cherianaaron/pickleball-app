@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { supabase } from "../lib/supabase";
+import { createClient } from "../lib/supabase-browser";
 import posthog from "posthog-js";
 
 interface Collaborator {
@@ -29,6 +29,9 @@ function generateInviteCode(): string {
 }
 
 export default function ShareTournament({ tournamentId, tournamentType, isOwner, onClose }: ShareTournamentProps) {
+  // Use browser client that shares auth state
+  const supabase = useMemo(() => createClient(), []);
+  
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(true);

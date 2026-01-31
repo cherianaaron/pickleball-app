@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
 import Bracket from "../components/Bracket";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
@@ -10,7 +10,7 @@ import ShareTournament from "../components/ShareTournament";
 import { BracketIcon, LockIcon } from "../components/Icons";
 import { useTournament } from "../context/TournamentContext";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
+import { createClient } from "../lib/supabase-browser";
 
 function BracketPageContent() {
   const { tournament, loading, error, resetTournament, loadTournamentById, clearError } = useTournament();

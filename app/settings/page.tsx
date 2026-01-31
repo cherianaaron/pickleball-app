@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useTournament } from "../context/TournamentContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
+import { createClient } from "../lib/supabase-browser";
 import { TIER_NAMES, TIER_LIMITS } from "../lib/tier-limits";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";

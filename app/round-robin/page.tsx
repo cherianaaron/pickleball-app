@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabase";
+import { createClient } from "../lib/supabase-browser";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -63,6 +63,10 @@ export default function RoundRobinPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { limits, loading: subLoading } = useSubscription();
+  
+  // Use browser client that shares auth state
+  const supabase = useMemo(() => createClient(), []);
+  
   const [phase, setPhase] = useState<Phase>("setup");
   const [loading, setLoading] = useState(false); // Start false - no auto-loading
   const [saving, setSaving] = useState(false);

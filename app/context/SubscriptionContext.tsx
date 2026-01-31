@@ -7,9 +7,10 @@ import {
   useEffect,
   useCallback,
   ReactNode,
+  useMemo,
 } from "react";
 import { useAuth } from "./AuthContext";
-import { supabase } from "../lib/supabase";
+import { createClient } from "../lib/supabase-browser";
 import {
   SubscriptionTier,
   TierLimits,
@@ -65,6 +66,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     useState<Subscription>(defaultSubscription);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use the browser client that shares auth state with AuthContext
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchSubscription = useCallback(async () => {
     if (!user) {
@@ -148,7 +152,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, supabase]);
 
   // Sync subscription from Stripe (useful when webhooks don't fire)
   const syncSubscription = useCallback(async () => {
