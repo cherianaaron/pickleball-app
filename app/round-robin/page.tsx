@@ -490,32 +490,30 @@ export default function RoundRobinPage() {
       const maxTournaments = limits.maxActiveTournaments;
       
       if (maxTournaments !== Infinity) {
-        // Count active bracket tournaments (not complete)
+        // Count ALL bracket tournaments (completed or not)
         const { count: bracketCount, error: bracketCountError } = await supabase
           .from("tournaments")
           .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("is_complete", false);
+          .eq("user_id", user.id);
         
         if (bracketCountError) {
           console.error("Error counting bracket tournaments:", bracketCountError);
         }
         
-        // Count active round-robin tournaments (not moved to playoffs)
+        // Count ALL round-robin tournaments (completed or not)
         const { count: rrCount, error: rrCountError } = await supabase
           .from("round_robin_tournaments")
           .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("is_playoffs_started", false);
+          .eq("user_id", user.id);
         
         if (rrCountError) {
           console.error("Error counting round-robin tournaments:", rrCountError);
         }
         
-        const totalActiveTournaments = (bracketCount || 0) + (rrCount || 0);
+        const totalTournaments = (bracketCount || 0) + (rrCount || 0);
         
-        if (totalActiveTournaments >= maxTournaments) {
-          setError(`You've reached the limit of ${maxTournaments} active tournament${maxTournaments === 1 ? '' : 's'} for your plan. Please complete or delete an existing tournament, or upgrade your plan.`);
+        if (totalTournaments >= maxTournaments) {
+          setError(`You've reached the limit of ${maxTournaments} tournament${maxTournaments === 1 ? '' : 's'} for your plan. Please delete an existing tournament or upgrade your plan.`);
           setSaving(false);
           return;
         }

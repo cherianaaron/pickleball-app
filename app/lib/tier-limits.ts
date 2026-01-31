@@ -67,14 +67,14 @@ export const TIER_DESCRIPTIONS: Record<SubscriptionTier, string> = {
 // Feature descriptions for pricing page
 export const TIER_FEATURES: Record<SubscriptionTier, string[]> = {
   free: [
-    "1 active tournament",
+    "1 tournament",
     "Up to 8 players",
     "Bracket tournaments only",
     "30-day history",
     "Ad-supported",
   ],
   club: [
-    "5 active tournaments",
+    "5 tournaments",
     "Up to 24 players",
     "Bracket + Round Robin",
     "5 collaborators per tournament",
