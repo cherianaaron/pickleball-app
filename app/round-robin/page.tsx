@@ -1048,7 +1048,14 @@ export default function RoundRobinPage() {
 
         {/* Error Display */}
         {error && (
-          <div className="mb-6 bg-red-500/20 border border-red-500/30 rounded-2xl p-4 text-red-400">
+          <div className={`mb-6 rounded-2xl p-4 ${
+            error.includes("reached the limit") 
+              ? "bg-yellow-500/20 border border-yellow-500/30 text-yellow-400"
+              : "bg-red-500/20 border border-red-500/30 text-red-400"
+          }`}>
+            {error.includes("reached the limit") && (
+              <div className="font-semibold mb-1">Tournament Limit Reached</div>
+            )}
             {error}
             <button onClick={() => setError(null)} className="ml-4 underline">Dismiss</button>
           </div>

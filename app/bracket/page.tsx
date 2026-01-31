@@ -129,9 +129,17 @@ function BracketPageContent() {
   }
 
   if (error) {
+    const isLimitError = error.includes("reached the limit");
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <ErrorMessage message={error} onRetry={() => window.location.reload()} />
+        <ErrorMessage 
+          message={error} 
+          title={isLimitError ? "Tournament Limit Reached" : "Something went wrong"}
+          emoji={isLimitError ? "📊" : "😕"}
+          titleColor={isLimitError ? "text-yellow-400" : "text-red-400"}
+          onRetry={() => window.location.reload()} 
+          retryLabel={isLimitError ? "Go Back" : "Try Again"}
+        />
       </div>
     );
   }
