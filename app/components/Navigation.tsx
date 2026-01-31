@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
@@ -118,6 +118,7 @@ type IconKey = keyof typeof NavIcons;
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const { subscription, isTrialing } = useSubscription();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -188,6 +189,7 @@ export default function Navigation() {
   const handleSignOut = async () => {
     await signOut();
     setShowUserMenu(false);
+    router.push("/");
   };
 
   // Get user display name or email
