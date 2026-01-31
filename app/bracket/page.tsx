@@ -18,6 +18,9 @@ function BracketPageContent() {
   const searchParams = useSearchParams();
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  
+  // Use browser client that shares auth state
+  const supabase = useMemo(() => createClient(), []);
 
   // Clear any previous errors when the page loads
   useEffect(() => {
