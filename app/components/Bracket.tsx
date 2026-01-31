@@ -218,7 +218,7 @@ function MatchCard({ match, onScoreClick, gameTimerMinutes, isByePlayer1, isByeP
 }
 
 // SVG Connector for bracket lines - connects matches between rounds
-// Supports non-power-of-2 brackets with variable match counts per round
+// Creates classic tournament bracket appearance with clean horizontal and vertical lines
 function BracketConnectorSVG({ 
   currentMatchCount,
   nextMatchCount,
@@ -230,16 +230,18 @@ function BracketConnectorSVG({
   slotHeight: number;
   totalHeight: number;
 }) {
-  const connectorWidth = 40;
+  const connectorWidth = 50;
+  const lineColor = "rgba(163, 230, 53, 0.5)";
+  const lineWidth = 2;
   
-  // Calculate positions for current round matches
+  // Calculate Y positions for current round matches (center of each slot)
   const currentMatchPositions: number[] = [];
   for (let i = 0; i < currentMatchCount; i++) {
     const matchY = (i + 0.5) * (totalHeight / currentMatchCount);
     currentMatchPositions.push(matchY);
   }
   
-  // Calculate positions for next round matches
+  // Calculate Y positions for next round matches (center of each slot)
   const nextMatchPositions: number[] = [];
   for (let i = 0; i < nextMatchCount; i++) {
     const matchY = (i + 0.5) * (totalHeight / nextMatchCount);
@@ -270,6 +272,10 @@ function BracketConnectorSVG({
     }
   }
   
+  // Key positions for bracket lines
+  const horizontalMidpoint = connectorWidth * 0.4; // Where horizontal lines meet vertical
+  const verticalX = connectorWidth * 0.5; // X position of vertical connector
+  
   return (
     <svg 
       width={connectorWidth} 
@@ -277,65 +283,57 @@ function BracketConnectorSVG({
       className="flex-shrink-0"
       style={{ display: 'block' }}
     >
-      <defs>
-        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="rgba(163, 230, 53, 0.6)" />
-          <stop offset="100%" stopColor="rgba(163, 230, 53, 0.3)" />
-        </linearGradient>
-      </defs>
       {connections.map((conn, i) => {
         const midY = (conn.top + conn.bottom) / 2;
         const isSingleMatch = conn.top === conn.bottom;
         
         return (
           <g key={i}>
-            {/* Line from top match to vertical bar */}
-            <line 
-              x1="0" 
-              y1={conn.top} 
-              x2={connectorWidth / 2} 
-              y2={conn.top}
-              stroke="url(#lineGradient)"
-              strokeWidth="2"
+            {/* Horizontal line from top match */}
+            <path 
+              d={`M 0 ${conn.top} L ${horizontalMidpoint} ${conn.top}`}
+              stroke={lineColor}
+              strokeWidth={lineWidth}
+              fill="none"
             />
+            
             {!isSingleMatch && (
               <>
-                {/* Line from bottom match to vertical bar */}
-                <line 
-                  x1="0" 
-                  y1={conn.bottom} 
-                  x2={connectorWidth / 2} 
-                  y2={conn.bottom}
-                  stroke="url(#lineGradient)"
-                  strokeWidth="2"
+                {/* Horizontal line from bottom match */}
+                <path 
+                  d={`M 0 ${conn.bottom} L ${horizontalMidpoint} ${conn.bottom}`}
+                  stroke={lineColor}
+                  strokeWidth={lineWidth}
+                  fill="none"
                 />
-                {/* Vertical connecting bar */}
-                <line 
-                  x1={connectorWidth / 2} 
-                  y1={conn.top} 
-                  x2={connectorWidth / 2} 
-                  y2={conn.bottom}
-                  stroke="rgba(163, 230, 53, 0.5)"
-                  strokeWidth="2"
+                
+                {/* Vertical line connecting the two horizontal lines */}
+                <path 
+                  d={`M ${horizontalMidpoint} ${conn.top} L ${horizontalMidpoint} ${conn.bottom}`}
+                  stroke={lineColor}
+                  strokeWidth={lineWidth}
+                  fill="none"
+                />
+                
+                {/* Horizontal line from vertical midpoint to next round */}
+                <path 
+                  d={`M ${horizontalMidpoint} ${midY} L ${connectorWidth} ${midY}`}
+                  stroke={lineColor}
+                  strokeWidth={lineWidth}
+                  fill="none"
                 />
               </>
             )}
-            {/* Line to next round match */}
-            <line 
-              x1={connectorWidth / 2} 
-              y1={midY} 
-              x2={connectorWidth} 
-              y2={conn.target}
-              stroke="url(#lineGradient)"
-              strokeWidth="2"
-            />
-            {/* Glowing dot at connection point */}
-            <circle 
-              cx={connectorWidth / 2} 
-              cy={midY} 
-              r="3"
-              fill="rgba(163, 230, 53, 0.8)"
-            />
+            
+            {/* For single match, just extend the line straight through */}
+            {isSingleMatch && (
+              <path 
+                d={`M ${horizontalMidpoint} ${conn.top} L ${connectorWidth} ${conn.target}`}
+                stroke={lineColor}
+                strokeWidth={lineWidth}
+                fill="none"
+              />
+            )}
           </g>
         );
       })}
