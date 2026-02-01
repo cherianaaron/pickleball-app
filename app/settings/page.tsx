@@ -431,6 +431,9 @@ function SettingsContent() {
                         Collaborators: <span className="text-white">{TIER_LIMITS[subscription.tier].maxCollaborators === Infinity ? "∞" : TIER_LIMITS[subscription.tier].maxCollaborators}</span>
                       </div>
                       <div className="text-white/60">
+                        Bracket: <span className="text-lime-400">✓</span>
+                      </div>
+                      <div className="text-white/60">
                         Round Robin: <span className={TIER_LIMITS[subscription.tier].hasRoundRobin ? "text-lime-400" : "text-red-400"}>{TIER_LIMITS[subscription.tier].hasRoundRobin ? "✓" : "✗"}</span>
                       </div>
                     </div>
