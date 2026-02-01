@@ -93,7 +93,7 @@ function PricingContent() {
             Choose Your Plan
           </h1>
           <p className="text-white/60 max-w-2xl mx-auto">
-            Start with a free 7-day trial on any paid plan. No credit card required to try!
+            Start with a free 7-day trial on any paid plan.
           </p>
 
           {cancelled && (
