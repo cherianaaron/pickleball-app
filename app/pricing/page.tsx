@@ -135,7 +135,7 @@ function PricingContent() {
           </span>
           {billingInterval === "year" && (
             <span className="ml-2 px-2 py-1 rounded-full bg-lime-400/20 text-lime-400 text-xs font-medium">
-              2 months free!
+              Save 20%
             </span>
           )}
         </div>
@@ -199,7 +199,7 @@ function PricingContent() {
               <span className="text-white/50 ml-2">/month</span>
               {billingInterval === "year" && (
                 <div className="text-lime-400 text-sm mt-1">
-                  Save ${getYearlySavings("club")}/year
+                  Save ${getYearlySavings("club")}/year • Billed $48 annually
                 </div>
               )}
             </div>
@@ -270,7 +270,7 @@ function PricingContent() {
               <span className="text-white/50 ml-2">/month</span>
               {billingInterval === "year" && (
                 <div className="text-orange-400 text-sm mt-1">
-                  Save ${getYearlySavings("league")}/year
+                  Save ${getYearlySavings("league")}/year • Billed $96 annually
                 </div>
               )}
             </div>
