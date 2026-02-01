@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState, useMemo } from "react";
+import { Suspense, useEffect, useState, useMemo, useRef } from "react";
 import Bracket from "../components/Bracket";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
@@ -19,6 +19,9 @@ function BracketPageContent() {
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   
+  // Track if we've already attempted auto-detection to prevent infinite loops
+  const hasAttemptedAutoDetect = useRef(false);
+  
   // Use browser client that shares auth state
   const supabase = useMemo(() => createClient(), []);
 
@@ -28,6 +31,11 @@ function BracketPageContent() {
       clearError();
     }
   }, []);
+
+  // Reset auto-detect flag when user changes (e.g., new user logs in)
+  useEffect(() => {
+    hasAttemptedAutoDetect.current = false;
+  }, [user?.id]);
 
   // Check if current user is the owner of the tournament
   const isOwner = tournament && user && tournament.userId === user.id;
@@ -48,9 +56,13 @@ function BracketPageContent() {
   // Auto-detect owned or collaborated tournaments when no tournament is loaded
   useEffect(() => {
     const autoDetectTournament = async () => {
-      // Skip if already loading, already have a tournament, or URL has tournament param
+      // Skip if already attempted, already loading, already have a tournament, or URL has tournament param
+      if (hasAttemptedAutoDetect.current) return;
       if (loading || loadingFromUrl || tournament || authLoading || !user) return;
       if (searchParams.get("tournament")) return;
+
+      // Mark that we've attempted auto-detection
+      hasAttemptedAutoDetect.current = true;
 
       try {
         setLoadingFromUrl(true);
@@ -118,7 +130,7 @@ function BracketPageContent() {
     
     autoDetectTournament();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading, tournament, loading, loadingFromUrl]);
+  }, [user, authLoading, tournament, loading]);
 
   if (loading || loadingFromUrl) {
     return (
