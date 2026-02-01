@@ -7,6 +7,7 @@ import { createClient } from "../lib/supabase-browser";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { JoinIcon, LockIcon } from "../components/Icons";
+import { TIER_LIMITS, SubscriptionTier } from "../lib/tier-limits";
 import posthog from "posthog-js";
 
 export default function JoinTournamentPage() {
@@ -73,6 +74,34 @@ export default function JoinTournamentPage() {
           return;
         }
 
+        // Check owner's collaborator limit
+        const { data: ownerSub } = await supabase
+          .from("user_subscriptions")
+          .select("tier")
+          .eq("user_id", bracketTournament.user_id)
+          .maybeSingle();
+        
+        const ownerTier = (ownerSub?.tier as SubscriptionTier) || "free";
+        const collaboratorLimit = TIER_LIMITS[ownerTier].maxCollaborators;
+        
+        if (collaboratorLimit === 0) {
+          setError("This tournament owner is on the Free plan and cannot have collaborators.");
+          setLoading(false);
+          return;
+        }
+        
+        // Count existing collaborators
+        const { count: collabCount } = await supabase
+          .from("tournament_collaborators")
+          .select("*", { count: "exact", head: true })
+          .eq("tournament_id", bracketTournament.id);
+        
+        if (collaboratorLimit !== Infinity && (collabCount || 0) >= collaboratorLimit) {
+          setError(`This tournament has reached its collaborator limit of ${collaboratorLimit}. The owner needs to upgrade their plan to add more collaborators.`);
+          setLoading(false);
+          return;
+        }
+
         // Join the tournament
         const { error: joinError } = await supabase
           .from("tournament_collaborators")
@@ -135,6 +164,34 @@ export default function JoinTournamentPage() {
           // Restore localStorage so round robin page can load the tournament
           localStorage.setItem("activeRoundRobinTournamentId", rrTournament.id);
           setTimeout(() => router.push("/round-robin"), 1500);
+          setLoading(false);
+          return;
+        }
+
+        // Check owner's collaborator limit
+        const { data: rrOwnerSub } = await supabase
+          .from("user_subscriptions")
+          .select("tier")
+          .eq("user_id", rrTournament.user_id)
+          .maybeSingle();
+        
+        const rrOwnerTier = (rrOwnerSub?.tier as SubscriptionTier) || "free";
+        const rrCollaboratorLimit = TIER_LIMITS[rrOwnerTier].maxCollaborators;
+        
+        if (rrCollaboratorLimit === 0) {
+          setError("This tournament owner is on the Free plan and cannot have collaborators.");
+          setLoading(false);
+          return;
+        }
+        
+        // Count existing collaborators
+        const { count: rrCollabCount } = await supabase
+          .from("round_robin_collaborators")
+          .select("*", { count: "exact", head: true })
+          .eq("tournament_id", rrTournament.id);
+        
+        if (rrCollaboratorLimit !== Infinity && (rrCollabCount || 0) >= rrCollaboratorLimit) {
+          setError(`This tournament has reached its collaborator limit of ${rrCollaboratorLimit}. The owner needs to upgrade their plan to add more collaborators.`);
           setLoading(false);
           return;
         }

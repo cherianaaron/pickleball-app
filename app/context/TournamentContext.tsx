@@ -282,6 +282,13 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
   const addPlayer = useCallback(async (name: string) => {
     if (!name.trim() || !tournament) return;
 
+    // Check player limit before adding
+    const playerLimit = limits.maxPlayersPerTournament;
+    if (playerLimit !== Infinity && tournament.players.length >= playerLimit) {
+      setError(`You've reached the limit of ${playerLimit} players for your plan. Please upgrade to add more players.`);
+      return;
+    }
+
     try {
       setError(null);
       const newSeed = tournament.players.length + 1;
@@ -309,7 +316,7 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
       console.error("Error adding player:", err);
       setError(err instanceof Error ? err.message : "Failed to add player");
     }
-  }, [tournament]);
+  }, [tournament, limits.maxPlayersPerTournament]);
 
   const removePlayer = useCallback(async (id: string) => {
     if (!tournament) return;

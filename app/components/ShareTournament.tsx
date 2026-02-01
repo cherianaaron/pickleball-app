@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { createClient } from "../lib/supabase-browser";
+import { useSubscription } from "../context/SubscriptionContext";
 import posthog from "posthog-js";
 
 interface Collaborator {
@@ -31,6 +33,7 @@ function generateInviteCode(): string {
 export default function ShareTournament({ tournamentId, tournamentType, isOwner, onClose }: ShareTournamentProps) {
   // Use browser client that shares auth state
   const supabase = useMemo(() => createClient(), []);
+  const { limits, subscription } = useSubscription();
   
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
@@ -40,6 +43,11 @@ export default function ShareTournament({ tournamentId, tournamentType, isOwner,
 
   const tableName = tournamentType === "bracket" ? "tournaments" : "round_robin_tournaments";
   const collabTableName = tournamentType === "bracket" ? "tournament_collaborators" : "round_robin_collaborators";
+  
+  // Check if sharing is available for this tier
+  const canShare = limits.maxCollaborators > 0;
+  const collaboratorLimit = limits.maxCollaborators;
+  const isAtCollaboratorLimit = collaboratorLimit !== Infinity && collaborators.length >= collaboratorLimit;
 
   useEffect(() => {
     loadShareData();
@@ -168,12 +176,46 @@ export default function ShareTournament({ tournamentId, tournamentType, isOwner,
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-2 border-lime-400 border-t-transparent rounded-full animate-spin" />
           </div>
+        ) : !canShare ? (
+          /* Free tier - show upgrade prompt */
+          <div className="text-center py-6">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400/20 to-orange-400/20 flex items-center justify-center border-2 border-yellow-400/30 mx-auto mb-4">
+              <span className="text-3xl">🔒</span>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Pro Feature</h3>
+            <p className="text-white/60 mb-6">
+              Tournament sharing and collaboration is available on Club and League plans.
+            </p>
+            <Link
+              href="/pricing"
+              className="inline-block px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 hover:scale-105 transition-transform"
+            >
+              Upgrade to Share
+            </Link>
+            <p className="text-white/40 text-xs mt-4">
+              Club plan includes up to 5 collaborators per tournament
+            </p>
+          </div>
         ) : (
           <div className="space-y-6">
+            {/* Collaborator Limit Warning */}
+            {isAtCollaboratorLimit && (
+              <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+                <span className="text-xl">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-yellow-400 font-semibold text-sm">Collaborator Limit Reached</p>
+                  <p className="text-yellow-400/70 text-xs">
+                    You&apos;ve reached the maximum of {collaboratorLimit} collaborators.{" "}
+                    <Link href="/pricing" className="underline hover:text-yellow-300">Upgrade</Link> to add more.
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Invite Code Section */}
             <div>
               <label className="block text-white/70 text-sm font-medium mb-3">
-                Invite Code
+                Invite Code {collaboratorLimit !== Infinity && `(${collaborators.length}/${collaboratorLimit} collaborators)`}
               </label>
               {inviteCode ? (
                 <div className="space-y-3">

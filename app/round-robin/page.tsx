@@ -303,8 +303,18 @@ export default function RoundRobinPage() {
     }
   }, [tournamentId, phase]);
 
+  // Check team limit
+  const teamLimit = limits.maxPlayersPerTournament;
+  const isAtTeamLimit = teamLimit !== Infinity && teams.length >= teamLimit;
+
   const addTeam = () => {
     if (!newTeamName.trim()) return;
+    
+    // Check team limit before adding
+    if (isAtTeamLimit) {
+      setError(`You've reached the limit of ${teamLimit} teams for your plan. Please upgrade to add more teams.`);
+      return;
+    }
     
     const newTeam: Team = {
       id: `temp-${Date.now()}`,
@@ -1106,20 +1116,36 @@ export default function RoundRobinPage() {
             {/* Add Teams */}
             <div className="glass rounded-3xl p-6">
               <h2 className="text-xl font-semibold text-white mb-4">
-                Teams ({teams.length})
+                Teams ({teams.length}{teamLimit !== Infinity ? `/${teamLimit}` : ""})
               </h2>
+              
+              {/* Team Limit Warning */}
+              {isAtTeamLimit && (
+                <div className="mb-4 bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-yellow-400 font-semibold">Team Limit Reached</p>
+                    <p className="text-yellow-400/70 text-sm">
+                      You&apos;ve reached the maximum of {teamLimit} teams for your plan.{" "}
+                      <a href="/pricing" className="underline hover:text-yellow-300">Upgrade</a> to add more teams.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex gap-3 mb-4">
                 <input
                   type="text"
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addTeam()}
-                  placeholder="Enter team name..."
-                  className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40"
+                  onKeyDown={(e) => e.key === "Enter" && !isAtTeamLimit && addTeam()}
+                  placeholder={isAtTeamLimit ? "Team limit reached" : "Enter team name..."}
+                  disabled={isAtTeamLimit}
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 disabled:opacity-50"
                 />
                 <button
                   onClick={addTeam}
-                  disabled={!newTeamName.trim()}
+                  disabled={!newTeamName.trim() || isAtTeamLimit}
                   className="px-6 py-3 rounded-xl font-bold bg-orange-500 text-white disabled:opacity-50"
                 >
                   Add Team
