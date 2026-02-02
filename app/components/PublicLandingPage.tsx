@@ -15,16 +15,10 @@ export default function PublicLandingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-400/5 rounded-full blur-3xl" />
         
         <div className="relative max-w-6xl mx-auto text-center">
-          {/* Floating pickleball */}
+          {/* Logo with wordmark */}
           <div className="inline-block mb-8 animate-float">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center shadow-2xl shadow-lime-400/30 animate-pulse-glow p-4">
-              <img src="/pickleball.svg" alt="Pickleball" className="w-full h-full" />
-            </div>
+            <img src="/picklebracket-vertical.png" alt="PickleBracket" className="h-48 sm:h-64 mx-auto" />
           </div>
-
-          <h1 className="text-5xl sm:text-7xl font-black text-white mb-6 tracking-tight">
-            Pickle<span className="gradient-text">Bracket</span>
-          </h1>
           <p className="text-xl sm:text-2xl text-white/60 max-w-3xl mx-auto mb-12">
             The ultimate tournament management platform for pickleball. Create brackets, run round robins, 
             track scores in real-time, and crown your champions.

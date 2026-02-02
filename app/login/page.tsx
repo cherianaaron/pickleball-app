@@ -110,8 +110,8 @@ function LoginPageContent() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center shadow-2xl shadow-lime-400/30 p-3 mx-auto">
-              <img src="/pickleball.svg" alt="Pickleball" className="w-full h-full" />
+            <div className="w-20 h-20 flex items-center justify-center mx-auto">
+              <img src="/picklebracket-logo.svg" alt="PickleBracket" className="w-full h-full" />
             </div>
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2">

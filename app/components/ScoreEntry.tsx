@@ -162,7 +162,7 @@ export default function ScoreEntry({ match: initialMatch, onClose }: ScoreEntryP
 
         <div className="text-center mb-6">
           <div className="w-12 h-12 mx-auto mb-2">
-            <img src="/pickleball.svg" alt="Pickleball" className="w-full h-full" />
+            <img src="/picklebracket-logo.svg" alt="PickleBracket" className="w-full h-full" />
           </div>
           <h2 className="text-2xl font-bold text-white">
             {isEditing ? "Edit Score" : "Enter Final Score"}

@@ -11,9 +11,7 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Brand */}
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-lime-400 to-yellow-300 flex items-center justify-center p-1">
-              <img src="/pickleball.svg" alt="PickleBracket" className="w-full h-full" />
-            </div>
+            <img src="/picklebracket-logo.svg" alt="PickleBracket" className="w-6 h-6" />
             <span className="text-white/50 text-sm">
               © {currentYear} PickleBracket
             </span>

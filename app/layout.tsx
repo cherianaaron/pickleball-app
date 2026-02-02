@@ -27,12 +27,11 @@ export const metadata: Metadata = {
   description: "Create and manage pickleball tournaments with ease. Generate brackets, track scores, and crown champions!",
   icons: {
     icon: [
-      { url: "/pickleball2.png", type: "image/png" },
-      { url: "/pickleball.svg", type: "image/svg+xml" },
+      { url: "/picklebracket-logo.svg", type: "image/svg+xml" },
     ],
-    shortcut: "/pickleball2.png",
+    shortcut: "/picklebracket-logo.svg",
     apple: [
-      { url: "/pickleball2.png", sizes: "180x180", type: "image/png" },
+      { url: "/picklebracket-logo.svg", sizes: "180x180", type: "image/svg+xml" },
     ],
   },
   manifest: "/manifest.json",

@@ -8,15 +8,10 @@
   "theme_color": "#134e4a",
   "icons": [
     {
-      "src": "/pickleball2.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/pickleball.svg",
+      "src": "/picklebracket-logo.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
