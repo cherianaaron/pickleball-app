@@ -41,7 +41,7 @@ export default function CookiePolicyPage() {
                 <h3 className="text-lg font-semibold text-lime-400 mb-2">Authentication Cookies</h3>
                 <p className="text-white/70 text-sm">
                   We use cookies to keep you signed in to your account and maintain your session. These are set 
-                  when you log in via Google or Apple authentication and are essential for accessing your 
+                  when you log in via Google authentication and are essential for accessing your 
                   tournaments and settings.
                 </p>
               </div>
@@ -99,7 +99,7 @@ export default function CookiePolicyPage() {
                     <td className="py-3 px-4">Analytics</td>
                   </tr>
                   <tr>
-                    <td className="py-3 px-4">Google/Apple</td>
+                    <td className="py-3 px-4">Google</td>
                     <td className="py-3 px-4">OAuth Authentication</td>
                     <td className="py-3 px-4">Essential</td>
                   </tr>
