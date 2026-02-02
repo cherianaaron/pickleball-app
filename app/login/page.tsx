@@ -142,7 +142,7 @@ function LoginPageContent() {
           <button
             onClick={handleGoogleSignIn}
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl text-base font-semibold bg-white text-gray-800 hover:bg-gray-100 transition-all duration-300 mb-6 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl text-base font-semibold bg-white text-gray-800 hover:bg-gray-50 hover:shadow-lg hover:shadow-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 mb-6 disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
