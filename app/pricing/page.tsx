@@ -58,7 +58,9 @@ function PricingContent() {
     if (billingInterval === "month") {
       return PRICING[tier].monthly;
     }
-    return (PRICING[tier].yearly / 12).toFixed(2);
+    const monthlyFromYearly = PRICING[tier].yearly / 12;
+    // Remove trailing .00 for clean display
+    return monthlyFromYearly % 1 === 0 ? monthlyFromYearly : monthlyFromYearly.toFixed(2);
   };
 
   const getYearlySavings = (tier: "club" | "league") => {
