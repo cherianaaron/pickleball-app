@@ -65,15 +65,44 @@ export async function POST(request: NextRequest) {
     // Get or create Stripe customer
     let stripeCustomerId: string | null = null;
 
-    // Check if user already has a Stripe customer ID
+    // Check if user already has a Stripe customer ID and trial history
     const { data: subscription } = await supabaseAdmin
       .from("user_subscriptions")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, trial_end, status")
       .eq("user_id", userId)
       .maybeSingle();
 
+    // Check if user has ever used a trial (trial_end being set means they had a trial)
+    let hasUsedTrial = false;
+    
+    if (subscription?.trial_end) {
+      // User has a trial_end date, meaning they've had a trial before
+      hasUsedTrial = true;
+    }
+
     if (subscription?.stripe_customer_id) {
       stripeCustomerId = subscription.stripe_customer_id;
+      
+      // Double-check with Stripe for any past subscriptions with trials
+      if (!hasUsedTrial) {
+        try {
+          const stripeSubscriptions = await stripe.subscriptions.list({
+            customer: subscription.stripe_customer_id,
+            status: "all", // Include cancelled, past_due, etc.
+            limit: 100,
+          });
+          
+          // Check if any subscription ever had a trial
+          for (const sub of stripeSubscriptions.data) {
+            if (sub.trial_end || sub.trial_start) {
+              hasUsedTrial = true;
+              break;
+            }
+          }
+        } catch (stripeError) {
+          console.error("Error checking Stripe subscription history:", stripeError);
+        }
+      }
     } else {
       // Create a new Stripe customer
       const customer = await stripe.customers.create({
@@ -115,7 +144,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Stripe Checkout session with 7-day trial
+    // Create Stripe Checkout session
+    // Only include trial if user has never used one before
+    const subscriptionData: {
+      metadata: { user_id: string; tier: string };
+      trial_period_days?: number;
+    } = {
+      metadata: {
+        user_id: userId,
+        tier: tier,
+      },
+    };
+
+    // Only add trial for users who haven't used one before
+    if (!hasUsedTrial) {
+      subscriptionData.trial_period_days = 7;
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: "subscription",
@@ -126,13 +171,7 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      subscription_data: {
-        trial_period_days: 7,
-        metadata: {
-          user_id: userId,
-          tier: tier,
-        },
-      },
+      subscription_data: subscriptionData,
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://picklebracket.app"}/settings?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://picklebracket.app"}/pricing?cancelled=true`,
       metadata: {

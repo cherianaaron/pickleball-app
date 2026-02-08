@@ -98,6 +98,8 @@ export async function POST(request: NextRequest) {
 
     if (subscriptions.data.length === 0) {
       // No active subscription, ensure user is on free tier
+      // NOTE: We intentionally do NOT reset trial_end to null here
+      // This preserves trial history to prevent users from getting multiple trials
       await supabaseAdmin
         .from("user_subscriptions")
         .update({
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
           stripe_price_id: null,
           current_period_start: null,
           current_period_end: null,
-          trial_end: null,
+          // trial_end is intentionally NOT reset - preserves trial history
           cancel_at_period_end: false,
           billing_interval: null,
         })

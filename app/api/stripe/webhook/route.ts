@@ -253,6 +253,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const previousTier = subRecord?.tier;
 
   // Downgrade to free tier
+  // NOTE: We intentionally do NOT reset trial_end to null here
+  // This prevents users from getting another free trial after cancelling
   await supabaseAdmin
     .from("user_subscriptions")
     .update({
@@ -262,7 +264,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       stripe_price_id: null,
       current_period_start: null,
       current_period_end: null,
-      trial_end: null,
+      // trial_end is intentionally NOT reset - preserves trial history
       cancel_at_period_end: false,
       billing_interval: null,
     })

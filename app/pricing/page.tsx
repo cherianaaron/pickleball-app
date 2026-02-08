@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
@@ -22,8 +22,30 @@ function PricingContent() {
   const searchParams = useSearchParams();
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
   const [processingTier, setProcessingTier] = useState<string | null>(null);
+  const [trialEligible, setTrialEligible] = useState<boolean>(true);
 
   const cancelled = searchParams.get("cancelled") === "true";
+
+  // Check if user is eligible for a free trial
+  useEffect(() => {
+    const checkTrialEligibility = async () => {
+      if (!user) {
+        setTrialEligible(true);
+        return;
+      }
+      
+      try {
+        const response = await fetch("/api/stripe/trial-eligibility");
+        const data = await response.json();
+        setTrialEligible(data.eligible);
+      } catch (error) {
+        console.error("Error checking trial eligibility:", error);
+        setTrialEligible(true); // Default to eligible on error
+      }
+    };
+
+    checkTrialEligibility();
+  }, [user]);
 
   const handleSubscribe = async (tier: "club" | "league") => {
     if (!user) {
@@ -95,7 +117,9 @@ function PricingContent() {
             Choose Your Plan
           </h1>
           <p className="text-white/60 max-w-2xl mx-auto">
-            Start with a free 7-day trial on any paid plan.
+            {trialEligible 
+              ? "Start with a free 7-day trial on any paid plan."
+              : "You've already used your free trial. Subscribe to continue with premium features."}
           </p>
 
           {cancelled && (
@@ -246,7 +270,7 @@ function PricingContent() {
                     Processing...
                   </span>
                 ) : (
-                  "Start Free Trial"
+                  trialEligible ? "Start Free Trial" : "Subscribe Now"
                 )}
               </button>
             )}
@@ -317,7 +341,7 @@ function PricingContent() {
                     Processing...
                   </span>
                 ) : (
-                  "Start Free Trial"
+                  trialEligible ? "Start Free Trial" : "Subscribe Now"
                 )}
               </button>
             )}
@@ -342,16 +366,18 @@ function PricingContent() {
               </p>
             </div>
 
-            <div className="glass rounded-2xl p-6">
-              <h3 className="text-white font-semibold mb-2">
-                What happens after my 7-day trial?
-              </h3>
-              <p className="text-white/60 text-sm">
-                After your trial ends, you'll be automatically charged for your
-                selected plan. You can cancel before the trial ends to avoid any
-                charges.
-              </p>
-            </div>
+            {trialEligible && (
+              <div className="glass rounded-2xl p-6">
+                <h3 className="text-white font-semibold mb-2">
+                  What happens after my 7-day trial?
+                </h3>
+                <p className="text-white/60 text-sm">
+                  After your trial ends, you&apos;ll be automatically charged for your
+                  selected plan. You can cancel before the trial ends to avoid any
+                  charges.
+                </p>
+              </div>
+            )}
 
             <div className="glass rounded-2xl p-6">
               <h3 className="text-white font-semibold mb-2">
