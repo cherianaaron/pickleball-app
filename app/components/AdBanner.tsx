@@ -6,36 +6,22 @@ import { useSubscription } from "../context/SubscriptionContext";
 interface AdBannerProps {
   placement?: "bottom" | "inline" | "history";
   className?: string;
+  adSlot?: string;
 }
 
-export default function AdBanner({ placement = "bottom", className = "" }: AdBannerProps) {
+// AdSense client ID
+const ADSENSE_CLIENT_ID = "ca-pub-9856496401783276";
+
+export default function AdBanner({ 
+  placement = "bottom", 
+  className = "",
+  adSlot = "auto" // You can create specific ad slots in AdSense and pass them here
+}: AdBannerProps) {
   const { subscription, loading } = useSubscription();
   const adRef = useRef<HTMLDivElement>(null);
+  const adInitialized = useRef(false);
 
-  // Don't show ads for paid users
-  if (loading || subscription.tier !== "free") {
-    return null;
-  }
-
-  // Only render on client side
-  useEffect(() => {
-    // Check if AdSense is configured
-    const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
-    
-    if (!adsenseClientId || !adRef.current) {
-      return;
-    }
-
-    // Try to load ad
-    try {
-      // @ts-ignore
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {
-      console.error("AdSense error:", e);
-    }
-  }, []);
-
-  // Placeholder styles based on placement
+  // Placement styles
   const placementStyles = {
     bottom: "fixed bottom-0 left-0 right-0 z-40",
     inline: "my-4",
@@ -48,26 +34,35 @@ export default function AdBanner({ placement = "bottom", className = "" }: AdBan
     history: "h-[100px]",
   };
 
-  // If AdSense is not configured, show a minimal placeholder
-  if (!process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID) {
-    return (
-      <div
-        className={`
-          ${placementStyles[placement]}
-          ${heightStyles[placement]}
-          ${className}
-          bg-gradient-to-r from-emerald-900/50 to-teal-900/50
-          backdrop-blur-sm border-t border-white/10
-          flex items-center justify-center
-        `}
-      >
-        <div className="text-center">
-          <p className="text-white/30 text-xs">
-            ✨ <span className="text-lime-400/50">Upgrade to Pro</span> for an ad-free experience
-          </p>
-        </div>
-      </div>
-    );
+  // Initialize AdSense when component mounts (for free tier users only)
+  useEffect(() => {
+    // Only initialize for free tier users
+    if (loading || subscription.tier !== "free") {
+      return;
+    }
+
+    // Prevent double initialization
+    if (adInitialized.current) {
+      return;
+    }
+
+    if (!adRef.current) {
+      return;
+    }
+
+    // Try to load ad
+    try {
+      // @ts-expect-error - adsbygoogle is added by the AdSense script
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      adInitialized.current = true;
+    } catch (e) {
+      console.error("AdSense error:", e);
+    }
+  }, [loading, subscription.tier]);
+
+  // Don't show ads for paid users or while loading
+  if (loading || subscription.tier !== "free") {
+    return null;
   }
 
   // Real AdSense ad
@@ -78,17 +73,25 @@ export default function AdBanner({ placement = "bottom", className = "" }: AdBan
         ${placementStyles[placement]}
         ${heightStyles[placement]}
         ${className}
-        bg-white/5 backdrop-blur-sm
+        bg-gradient-to-r from-emerald-900/30 to-teal-900/30
+        backdrop-blur-sm border-t border-white/10
+        overflow-hidden
       `}
     >
       <ins
         className="adsbygoogle"
-        style={{ display: "block" }}
-        data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}
-        data-ad-slot="YOUR_AD_SLOT_ID" // Replace with your actual ad slot ID
+        style={{ display: "block", width: "100%", height: "100%" }}
+        data-ad-client={ADSENSE_CLIENT_ID}
+        data-ad-slot={adSlot}
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
+      {/* Subtle upgrade hint */}
+      <div className="absolute bottom-1 right-2 text-[10px] text-white/20">
+        <a href="/pricing" className="hover:text-lime-400/50 transition-colors">
+          Go ad-free
+        </a>
+      </div>
     </div>
   );
 }

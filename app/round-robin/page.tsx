@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ShareTournament from "../components/ShareTournament";
+import AdBanner from "../components/AdBanner";
 import { RoundRobinIcon, LockIcon } from "../components/Icons";
 
 interface Team {
@@ -1836,6 +1837,9 @@ export default function RoundRobinPage() {
           onClose={() => setShowShareModal(false)}
         />
       )}
+
+      {/* Ad Banner for Free Tier */}
+      <AdBanner placement="bottom" />
     </div>
   );
 }

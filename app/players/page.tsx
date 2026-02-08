@@ -8,6 +8,7 @@ import PlayerList from "../components/PlayerList";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import UpgradePrompt from "../components/UpgradePrompt";
+import AdBanner from "../components/AdBanner";
 import { PlayersIcon } from "../components/Icons";
 import { useTournament } from "../context/TournamentContext";
 import { useSubscription } from "../context/SubscriptionContext";
@@ -265,6 +266,9 @@ function PlayersPageContent() {
           </div>
         )}
       </div>
+
+      {/* Ad Banner for Free Tier */}
+      <AdBanner placement="bottom" />
     </div>
     </>
   );

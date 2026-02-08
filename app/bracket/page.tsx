@@ -7,6 +7,7 @@ import Bracket from "../components/Bracket";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import ShareTournament from "../components/ShareTournament";
+import AdBanner from "../components/AdBanner";
 import { BracketIcon, LockIcon } from "../components/Icons";
 import { useTournament } from "../context/TournamentContext";
 import { useAuth } from "../context/AuthContext";
@@ -334,6 +335,9 @@ function BracketPageContent() {
           onClose={() => setShowShareModal(false)}
         />
       )}
+
+      {/* Ad Banner for Free Tier */}
+      <AdBanner placement="bottom" />
     </div>
   );
 }

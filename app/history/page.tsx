@@ -8,6 +8,7 @@ import { useTournament } from "../context/TournamentContext";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import AdBanner from "../components/AdBanner";
 import { HistoryIcon, LockIcon } from "../components/Icons";
 
 interface TournamentSummary {
@@ -891,6 +892,9 @@ export default function HistoryPage() {
           </div>
         </div>
       )}
+
+      {/* Ad Banner for Free Tier */}
+      <AdBanner placement="bottom" />
     </div>
   );
 }
