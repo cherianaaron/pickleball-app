@@ -197,9 +197,13 @@ function PricingContent() {
               <div className="w-full py-3 rounded-xl text-center font-semibold bg-white/10 text-white/60">
                 Current Plan
               </div>
+            ) : user && (subscription.tier === "club" || subscription.tier === "league") ? (
+              <div className="w-full py-3 rounded-xl text-center font-semibold bg-white/10 text-white/40">
+                Included
+              </div>
             ) : (
               <Link
-                href={user ? "/" : "/login"}
+                href="/login"
                 className="block w-full py-3 rounded-xl text-center font-semibold bg-white/10 text-white hover:bg-white/20 transition-all"
               >
                 Get Started
