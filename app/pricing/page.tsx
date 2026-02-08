@@ -92,6 +92,8 @@ function PricingContent() {
   };
 
   const isCurrentPlan = (tier: SubscriptionTier) => {
+    // Only show "Current Plan" if user is logged in
+    if (!user) return false;
     return subscription.tier === tier;
   };
 
@@ -197,7 +199,7 @@ function PricingContent() {
               </div>
             ) : (
               <Link
-                href={user ? "/" : "/login?redirect=/pricing"}
+                href={user ? "/" : "/login"}
                 className="block w-full py-3 rounded-xl text-center font-semibold bg-white/10 text-white hover:bg-white/20 transition-all"
               >
                 Get Started
