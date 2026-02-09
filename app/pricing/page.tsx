@@ -203,7 +203,11 @@ function PricingContent() {
               ))}
             </ul>
 
-            {isCurrentPlan("free") ? (
+            {subscription.isAdmin ? (
+              <div className="w-full py-3 rounded-xl text-center font-semibold bg-purple-500/20 text-purple-400">
+                Admin Access
+              </div>
+            ) : isCurrentPlan("free") ? (
               <div className="w-full py-3 rounded-xl text-center font-semibold bg-white/10 text-white/60">
                 Current Plan
               </div>
@@ -255,7 +259,11 @@ function PricingContent() {
               ))}
             </ul>
 
-            {isCurrentPlan("club") ? (
+            {subscription.isAdmin ? (
+              <div className="w-full py-3 rounded-xl text-center font-semibold bg-purple-500/20 text-purple-400">
+                Admin Access
+              </div>
+            ) : isCurrentPlan("club") ? (
               <div className="w-full py-3 rounded-xl text-center font-semibold bg-lime-400/20 text-lime-400">
                 Current Plan
               </div>
@@ -326,7 +334,11 @@ function PricingContent() {
               ))}
             </ul>
 
-            {isCurrentPlan("league") ? (
+            {subscription.isAdmin ? (
+              <div className="w-full py-3 rounded-xl text-center font-semibold bg-purple-500/20 text-purple-400">
+                Admin Access
+              </div>
+            ) : isCurrentPlan("league") ? (
               <div className="w-full py-3 rounded-xl text-center font-semibold bg-orange-400/20 text-orange-400">
                 Current Plan
               </div>

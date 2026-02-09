@@ -300,20 +300,22 @@ export default function Navigation() {
                           <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
                           <span className={`
                             px-2 py-0.5 rounded-full text-[10px] font-bold
-                            ${subscription.tier === "league" 
+                            ${subscription.isAdmin
+                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                              : subscription.tier === "league" 
                               ? "bg-gradient-to-r from-orange-400 to-red-400 text-white"
                               : subscription.tier === "club"
                               ? "bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900"
                               : "bg-white/20 text-white/60"
                             }
                           `}>
-                            {TIER_NAMES[subscription.tier].toUpperCase()}
-                            {isTrialing && " (Trial)"}
+                            {subscription.isAdmin ? "ADMIN" : TIER_NAMES[subscription.tier].toUpperCase()}
+                            {!subscription.isAdmin && isTrialing && " (Trial)"}
                           </span>
                         </div>
                         <p className="text-white/50 text-xs truncate">{user.email}</p>
                       </div>
-                      {subscription.tier === "free" && (
+                      {subscription.tier === "free" && !subscription.isAdmin && (
                         <Link
                           href="/pricing"
                           className="w-full px-4 py-2 text-left text-sm text-lime-400 hover:bg-lime-400/10 transition-colors flex items-center gap-2"
@@ -421,20 +423,22 @@ export default function Navigation() {
                             <p className="text-white text-sm font-medium truncate">{getUserDisplayName()}</p>
                             <span className={`
                               px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0
-                              ${subscription.tier === "league" 
+                              ${subscription.isAdmin
+                                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                                : subscription.tier === "league" 
                                 ? "bg-gradient-to-r from-orange-400 to-red-400 text-white"
                                 : subscription.tier === "club"
                                 ? "bg-lime-400 text-emerald-900"
                                 : "bg-white/20 text-white/60"
                               }
                             `}>
-                              {TIER_NAMES[subscription.tier].toUpperCase()}
+                              {subscription.isAdmin ? "ADMIN" : TIER_NAMES[subscription.tier].toUpperCase()}
                             </span>
                           </div>
                           <p className="text-white/50 text-xs truncate">{user.email}</p>
                         </div>
                       </div>
-                      {subscription.tier === "free" && (
+                      {subscription.tier === "free" && !subscription.isAdmin && (
                         <Link
                           href="/pricing"
                           className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-lime-400 hover:bg-lime-400/10 border-l-4 border-transparent transition-all duration-200"
