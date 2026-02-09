@@ -26,6 +26,7 @@ interface Subscription {
   trialEnd: string | null;
   cancelAtPeriodEnd: boolean;
   stripeCustomerId: string | null;
+  isAdmin: boolean;
 }
 
 interface SubscriptionContextType {
@@ -35,6 +36,7 @@ interface SubscriptionContextType {
   error: string | null;
   isTrialing: boolean;
   isPaid: boolean;
+  isAdmin: boolean;
   canUse: (feature: keyof TierLimits) => boolean;
   checkLimit: (feature: keyof TierLimits, currentValue: number) => boolean;
   refreshSubscription: () => Promise<void>;
@@ -54,6 +56,7 @@ const defaultSubscription: Subscription = {
   trialEnd: null,
   cancelAtPeriodEnd: false,
   stripeCustomerId: null,
+  isAdmin: false,
 };
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(
@@ -138,6 +141,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           trialEnd: data.trial_end,
           cancelAtPeriodEnd: data.cancel_at_period_end || false,
           stripeCustomerId: data.stripe_customer_id,
+          isAdmin: data.is_admin || false,
         });
       } else {
         // No subscription record exists yet - user is on free tier
@@ -202,16 +206,20 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [authLoading, user, syncSubscription]);
 
   // Computed values
-  const limits = TIER_LIMITS[subscription.tier];
+  // Admins get League tier limits regardless of their actual tier
+  const effectiveTier = subscription.isAdmin ? "league" : subscription.tier;
+  const limits = TIER_LIMITS[effectiveTier];
   const isTrialing = subscription.status === "trialing";
   const isPaid = subscription.tier !== "free" && subscription.status === "active";
+  const isAdmin = subscription.isAdmin;
 
-  // Check if user can use a feature
+  // Check if user can use a feature (admins can use everything)
   const canUse = useCallback(
     (feature: keyof TierLimits): boolean => {
+      if (subscription.isAdmin) return true;
       return canUseFeature(subscription.tier, feature);
     },
-    [subscription.tier]
+    [subscription.tier, subscription.isAdmin]
   );
 
   // Check if a limit is within bounds
@@ -284,6 +292,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     error,
     isTrialing,
     isPaid,
+    isAdmin,
     canUse,
     checkLimit,
     refreshSubscription: fetchSubscription,

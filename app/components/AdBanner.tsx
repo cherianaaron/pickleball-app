@@ -36,8 +36,8 @@ export default function AdBanner({
 
   // Initialize AdSense when component mounts (for free tier users only)
   useEffect(() => {
-    // Only initialize for free tier users
-    if (loading || subscription.tier !== "free") {
+    // Only initialize for free tier users (not admins)
+    if (loading || subscription.tier !== "free" || subscription.isAdmin) {
       return;
     }
 
@@ -60,8 +60,8 @@ export default function AdBanner({
     }
   }, [loading, subscription.tier]);
 
-  // Don't show ads for paid users or while loading
-  if (loading || subscription.tier !== "free") {
+  // Don't show ads for paid users, admins, or while loading
+  if (loading || subscription.tier !== "free" || subscription.isAdmin) {
     return null;
   }
 

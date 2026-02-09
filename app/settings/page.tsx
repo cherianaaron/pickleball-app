@@ -33,7 +33,7 @@ const BUG_CATEGORIES = [
 
 function SettingsContent() {
   const { tournament, loading, error, updateSettings, getUserSettingsPreference, saveUserSettingsPreference } = useTournament();
-  const { subscription, loading: subLoading, createPortalSession } = useSubscription();
+  const { subscription, limits, loading: subLoading, createPortalSession } = useSubscription();
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const success = searchParams.get("success") === "true";
@@ -380,18 +380,26 @@ function SettingsContent() {
                     <span className="text-white/60 text-sm">Current Plan</span>
                     <span className={`
                       px-3 py-1 rounded-full text-xs font-bold
-                      ${subscription.tier === "league" 
+                      ${subscription.isAdmin
+                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                        : subscription.tier === "league" 
                         ? "bg-gradient-to-r from-orange-400 to-red-400 text-white"
                         : subscription.tier === "club"
                         ? "bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900"
                         : "bg-white/10 text-white/60"
                       }
                     `}>
-                      {TIER_NAMES[subscription.tier].toUpperCase()}
+                      {subscription.isAdmin ? "ADMIN" : TIER_NAMES[subscription.tier].toUpperCase()}
                     </span>
                   </div>
+
+                  {subscription.isAdmin && (
+                    <div className="text-purple-400 text-sm mb-2">
+                      ✨ You have admin access with unlimited features
+                    </div>
+                  )}
                   
-                  {subscription.tier !== "free" && (
+                  {!subscription.isAdmin && subscription.tier !== "free" && (
                     <>
                       <div className="text-white text-sm mb-1">
                         Status: <span className={`font-medium ${
@@ -422,19 +430,19 @@ function SettingsContent() {
                     <div className="text-white/40 text-xs mb-2">Your Limits</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="text-white/60">
-                        Tournaments: <span className="text-white">{TIER_LIMITS[subscription.tier].maxActiveTournaments === Infinity ? "∞" : TIER_LIMITS[subscription.tier].maxActiveTournaments}</span>
+                        Tournaments: <span className="text-white">{limits.maxActiveTournaments === Infinity ? "∞" : limits.maxActiveTournaments}</span>
                       </div>
                       <div className="text-white/60">
-                        Players: <span className="text-white">{TIER_LIMITS[subscription.tier].maxPlayersPerTournament === Infinity ? "∞" : TIER_LIMITS[subscription.tier].maxPlayersPerTournament}</span>
+                        Players: <span className="text-white">{limits.maxPlayersPerTournament === Infinity ? "∞" : limits.maxPlayersPerTournament}</span>
                       </div>
                       <div className="text-white/60">
-                        Collaborators: <span className="text-white">{TIER_LIMITS[subscription.tier].maxCollaborators === Infinity ? "∞" : TIER_LIMITS[subscription.tier].maxCollaborators}</span>
+                        Collaborators: <span className="text-white">{limits.maxCollaborators === Infinity ? "∞" : limits.maxCollaborators}</span>
                       </div>
                       <div className="text-white/60">
                         Bracket: <span className="text-lime-400">✓</span>
                       </div>
                       <div className="text-white/60">
-                        Round Robin: <span className={TIER_LIMITS[subscription.tier].hasRoundRobin ? "text-lime-400" : "text-red-400"}>{TIER_LIMITS[subscription.tier].hasRoundRobin ? "✓" : "✗"}</span>
+                        Round Robin: <span className={limits.hasRoundRobin ? "text-lime-400" : "text-red-400"}>{limits.hasRoundRobin ? "✓" : "✗"}</span>
                       </div>
                     </div>
                   </div>
@@ -442,7 +450,11 @@ function SettingsContent() {
 
                 {/* Action Buttons */}
                 <div className="space-y-3">
-                  {subscription.tier === "free" ? (
+                  {subscription.isAdmin ? (
+                    <div className="text-center text-purple-400/60 text-sm py-2">
+                      Admin accounts don&apos;t require subscription management
+                    </div>
+                  ) : subscription.tier === "free" ? (
                     <Link
                       href="/pricing"
                       className="block w-full py-3 px-4 rounded-xl font-bold text-center bg-gradient-to-r from-lime-400 to-yellow-300 text-emerald-900 hover:shadow-lg hover:shadow-lime-400/30 transition-all"
@@ -484,7 +496,7 @@ function SettingsContent() {
                     </button>
                   )}
                   
-                  {subscription.tier !== "free" && subscription.tier !== "league" && (
+                  {!subscription.isAdmin && subscription.tier !== "free" && subscription.tier !== "league" && (
                     <Link
                       href="/pricing"
                       className="block w-full py-3 px-4 rounded-xl font-medium text-center bg-white/10 text-white hover:bg-white/20 transition-all"

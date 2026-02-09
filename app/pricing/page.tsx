@@ -119,10 +119,20 @@ function PricingContent() {
             Choose Your Plan
           </h1>
           <p className="text-white/60 max-w-2xl mx-auto">
-            {trialEligible 
+            {subscription.isAdmin 
+              ? "You have admin access with all features unlocked."
+              : trialEligible 
               ? "Start with a free 7-day trial on any paid plan."
               : "You've already used your free trial. Subscribe to continue with premium features."}
           </p>
+
+          {subscription.isAdmin && (
+            <div className="mt-4 p-4 rounded-xl bg-purple-500/20 border border-purple-500/30 max-w-md mx-auto">
+              <p className="text-purple-300 text-sm">
+                ✨ Admin Account - You have unlimited access to all features
+              </p>
+            </div>
+          )}
 
           {cancelled && (
             <div className="mt-4 p-4 rounded-xl bg-yellow-500/20 border border-yellow-500/30 max-w-md mx-auto">
