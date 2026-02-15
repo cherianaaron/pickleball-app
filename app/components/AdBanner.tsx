@@ -15,23 +15,24 @@ const ADSENSE_CLIENT_ID = "ca-pub-9856496401783276";
 export default function AdBanner({ 
   placement = "bottom", 
   className = "",
-  adSlot = "auto" // You can create specific ad slots in AdSense and pass them here
+  adSlot = "auto"
 }: AdBannerProps) {
   const { subscription, loading } = useSubscription();
   const adRef = useRef<HTMLDivElement>(null);
   const adInitialized = useRef(false);
 
-  // Placement styles
+  // Placement styles - bottom banner is fixed and slim
   const placementStyles = {
     bottom: "fixed bottom-0 left-0 right-0 z-40",
     inline: "my-4",
     history: "my-4",
   };
 
+  // Height styles - smaller on mobile for bottom placement
   const heightStyles = {
-    bottom: "h-[90px]",
-    inline: "h-[250px]",
-    history: "h-[100px]",
+    bottom: "h-[50px] sm:h-[60px]", // Smaller banner height
+    inline: "h-[100px] sm:h-[120px]",
+    history: "h-[60px] sm:h-[80px]",
   };
 
   // Initialize AdSense when component mounts (for free tier users only)
@@ -65,7 +66,9 @@ export default function AdBanner({
     return null;
   }
 
-  // Real AdSense ad
+  // Use horizontal banner format for bottom placement to prevent large expandable ads
+  const adFormat = placement === "bottom" ? "horizontal" : "auto";
+
   return (
     <div
       ref={adRef}
@@ -77,13 +80,19 @@ export default function AdBanner({
         backdrop-blur-sm border-t border-white/10
         overflow-hidden
       `}
+      style={{ maxHeight: placement === "bottom" ? "60px" : undefined }}
     >
       <ins
         className="adsbygoogle"
-        style={{ display: "block", width: "100%", height: "100%" }}
+        style={{ 
+          display: "block", 
+          width: "100%", 
+          height: "100%",
+          maxHeight: placement === "bottom" ? "60px" : undefined,
+        }}
         data-ad-client={ADSENSE_CLIENT_ID}
         data-ad-slot={adSlot}
-        data-ad-format="auto"
+        data-ad-format={adFormat}
         data-full-width-responsive="true"
       />
       {/* Subtle upgrade hint */}
