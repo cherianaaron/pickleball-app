@@ -400,8 +400,26 @@ export function TournamentProvider({ children }: { children: ReactNode }) {
   const generateBracket = useCallback(async () => {
     if (!tournament || tournament.players.length < 2) return;
 
+    // Prevent generating if tournament already started
+    if (tournament.isStarted) {
+      console.log("Tournament already started, skipping bracket generation");
+      return;
+    }
+
     try {
       setError(null);
+      
+      // Safety: Delete any existing matches for this tournament first
+      // This prevents duplicate matches if generateBracket is called multiple times
+      const { error: deleteError } = await supabase
+        .from("matches")
+        .delete()
+        .eq("tournament_id", tournament.id);
+      
+      if (deleteError) {
+        console.error("Error clearing existing matches:", deleteError);
+      }
+
       const numPlayers = tournament.players.length;
 
       // Sort players by seed
